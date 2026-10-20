@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会员运营 Agent</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f4f2;
+  --surface-1: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e2e1dc;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #85847f;
+  --series-1: #2a78d6;
+  --seq-1: #e8f1fc; --seq-2: #c5dcf6; --seq-3: #8fbcee; --seq-4: #4f93e0; --seq-5: #2a78d6;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --user-bubble: #2a78d6;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #111110; --surface-1: #1a1a19; --surface-2: #232321; --border: #33332f;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8d8c84;
+    --series-1: #3987e5;
+    --seq-1: #1d2a3a; --seq-2: #1f3d63; --seq-3: #275a92; --seq-4: #3176c4; --seq-5: #3987e5;
+    --accent: #3987e5; --user-bubble: #3176c4;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111110; --surface-1: #1a1a19; --surface-2: #232321; --border: #33332f;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8d8c84;
+  --series-1: #3987e5;
+  --seq-1: #1d2a3a; --seq-2: #1f3d63; --seq-3: #275a92; --seq-4: #3176c4; --seq-5: #3987e5;
+  --accent: #3987e5; --user-bubble: #3176c4;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-primary);
+  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 20px;
+  background: var(--surface-1); border-bottom: 1px solid var(--border); }
+header h1 { font-size: 17px; margin: 0; }
+.pill { font-size: 12px; padding: 2px 9px; border-radius: 99px; background: var(--surface-2); color: var(--text-secondary); }
+.pill.on { background: var(--accent); color: var(--accent-ink); }
+.dataset { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+.dataset a { color: inherit; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; padding: 16px 20px; align-items: start; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.card h2 { font-size: 14px; margin: 0 0 12px; }
+.card h2 small { font-weight: normal; color: var(--text-muted); margin-left: 6px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.kpi .label { font-size: 12px; color: var(--text-secondary); }
+.kpi .value { font-size: 22px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi .sub { font-size: 12px; color: var(--text-muted); }
+/* 横向条形图 */
+.bars { display: grid; grid-template-columns: 72px minmax(0, 1fr) 150px; gap: 8px 10px; align-items: center; }
+.bars .name { color: var(--text-secondary); font-size: 13px; }
+.bars .track { height: 18px; position: relative; }
+.bars .bar { height: 100%; background: var(--series-1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bars .val { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.bars .row-hit { display: contents; cursor: default; }
+/* 矩阵 */
+table { border-collapse: collapse; width: 100%; }
+.matrix td, .matrix th { border: 2px solid var(--surface-1); padding: 0; text-align: center; font-size: 12px; }
+.matrix th { color: var(--text-secondary); font-weight: 500; padding: 6px 4px; }
+.matrix td button { width: 100%; min-height: 58px; border: 0; border-radius: 6px; cursor: pointer; padding: 6px 4px;
+  font: inherit; color: var(--text-primary); background: var(--surface-2); }
+.matrix td button.selected { outline: 2px solid var(--text-primary); outline-offset: -2px; }
+.matrix td button .n { font-size: 15px; font-weight: 600; }
+.matrix td button .r { color: var(--text-secondary); }
+.matrix td button.dark-cell { color: #fff; }
+.matrix td button.dark-cell .r { color: #e8eefa; }
+.legend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+.legend i { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+/* 名单 */
+.list th { text-align: left; font-size: 12px; color: var(--text-muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.list td { padding: 7px 8px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; font-variant-numeric: tabular-nums; }
+.list tr.click { cursor: pointer; }
+.list tr.click:hover td { background: var(--surface-2); }
+.reasons { color: var(--text-secondary); font-size: 12px; }
+.strategy { background: var(--surface-2); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+.strategy h3 { margin: 0 0 4px; font-size: 14px; }
+.strategy ul { margin: 6px 0; padding-left: 18px; }
+.muted { color: var(--text-muted); }
+.model { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px; }
+.model b { font-variant-numeric: tabular-nums; }
+/* 会员抽屉 */
+dialog { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); color: var(--text-primary);
+  width: min(560px, calc(100vw - 32px)); max-height: 85vh; padding: 20px; }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.kv { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 4px 12px; font-size: 13px; margin-bottom: 12px; }
+.kv dt { color: var(--text-muted); }
+.kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+dialog h4 { margin: 14px 0 6px; font-size: 13px; }
+.close { float: right; border: 0; background: none; font-size: 20px; cursor: pointer; color: var(--text-secondary); }
+/* 对话 */
+.chat { position: sticky; top: 16px; display: flex; flex-direction: column; height: calc(100vh - 100px); padding: 0; overflow: hidden; }
+.chat h2 { padding: 14px 16px 0; }
+.msgs { flex: 1; overflow-y: auto; padding: 4px 16px 12px; }
+.msg { margin: 10px 0; }
+.msg.user { text-align: right; }
+.msg.user .bubble { display: inline-block; background: var(--user-bubble); color: #fff; padding: 8px 12px; border-radius: 12px 12px 2px 12px; text-align: left; max-width: 90%; }
+.msg.bot .bubble { background: var(--surface-2); padding: 10px 12px; border-radius: 12px 12px 12px 2px; overflow-x: auto; }
+.bubble h3 { font-size: 14px; margin: 8px 0 4px; }
+.bubble p { margin: 4px 0; }
+.bubble ul { margin: 4px 0; padding-left: 18px; }
+.bubble table { font-size: 12px; margin: 6px 0; }
+.bubble td, .bubble th { border: 1px solid var(--border); padding: 3px 6px; }
+.bubble blockquote { margin: 0 0 6px; color: var(--text-muted); font-size: 12px; }
+.tools { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.steps { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.steps:empty { display: none; }
+.step { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.step .icon { width: 14px; height: 14px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+.step.running .icon { border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+.step.ok .icon::before { content: "✓"; color: var(--accent); font-weight: 700; }
+.step.fail .icon::before { content: "!"; color: var(--text-primary); font-weight: 700; }
+.step.note { color: var(--text-muted); }
+.step .args { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.answer:empty { display: none; }
+.waiting { color: var(--text-muted); font-size: 12px; }
+.caret::after { content: "▍"; animation: blink 1s step-end infinite; color: var(--text-muted); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink { 50% { opacity: 0; } }
+.suggest { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 16px 8px; }
+.suggest button { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 99px;
+  padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+form textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font: inherit;
+  background: var(--surface-1); color: var(--text-primary); height: 42px; }
+form button { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 0 16px; font: inherit; cursor: pointer; }
+form button:disabled { opacity: .5; cursor: wait; }
+#tip { position: fixed; pointer-events: none; background: var(--text-primary); color: var(--surface-1); font-size: 12px;
+  padding: 6px 8px; border-radius: 6px; display: none; z-index: 10; max-width: 260px; }
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .chat { position: static; height: 600px; }
+}
+@media (max-width: 600px) {
+  header, .layout { padding-left: 16px; padding-right: 16px; }
+  .bars { grid-template-columns: 60px minmax(0, 1fr) 110px; }
+  .model { grid-template-columns: minmax(0, 1fr); }
+  .matrix-wrap { overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>会员运营 Agent</h1>
+  <span class="pill" id="mode">…</span>
+  <span class="dataset" id="dataset"></span>
+</header>
+
+<div class="layout">
+  <main>
+    <section class="kpis" id="kpis"></section>
+
+    <section class="card">
+      <h2>生命周期结构 <small>会员人数；右侧为人数占比 / 收入占比</small></h2>
+      <div class="bars" id="stage-bars"></div>
+    </section>
+
+    <section class="card">
+      <h2>生命周期 × 价值分层 <small>格内为人数与流失风险金额，颜色越深风险金额越高；点击查看策略和名单</small></h2>
+      <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+      <div class="legend" id="matrix-legend"></div>
+    </section>
+
+    <section class="card" id="segment-detail" hidden>
+      <h2 id="segment-title"></h2>
+      <div id="segment-strategy"></div>
+      <table class="list" id="segment-list"></table>
+    </section>
+
+    <section class="card" id="member-value-card" hidden>
+      <h2>会员 vs 非会员 <small id="member-value-period"></small></h2>
+      <div class="model" id="member-value"></div>
+    </section>
+
+    <section class="card">
+      <h2>模型可信度 <small>时间切分回测，未用未来数据</small></h2>
+      <div class="model" id="model"></div>
+    </section>
+  </main>
+
+  <aside class="card chat">
+    <h2>运营助手</h2>
+    <div class="msgs" id="msgs"></div>
+    <div class="suggest" id="suggest"></div>
+    <form id="chat-form">
+      <textarea id="input" placeholder="问问你的会员，比如：哪些高价值会员有流失风险？"></textarea>
+      <button type="submit" id="send">发送</button>
+    </form>
+  </aside>
+</div>
+
+<dialog id="drawer"></dialog>
+<div id="tip"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const api = (path, opts) => fetch(path, opts).then(async r => { if (!r.ok) throw new Error((await r.json()).detail || r.statusText); return r.json(); });
+let CUR = "USD";
+const money = v => v == null ? "—" : `${{USD: "$", CNY: "¥"}[CUR] || ""}${Math.round(v).toLocaleString()}`;
+// 卡片和矩阵空间小，人民币大数用"万/亿"
+const moneyShort = v => v == null ? "—" : CUR !== "CNY" || Math.abs(v) < 1e4 ? money(v)
+  : Math.abs(v) >= 1e8 ? `¥${(v / 1e8).toFixed(2)} 亿` : `¥${Math.round(v / 1e4).toLocaleString()} 万`;
+const pct = v => v == null ? "—" : `${(v * 100).toFixed(0)}%`;
+const STAGE_ORDER = ["new", "growing", "mature", "at_risk", "dormant", "lost"];
+const TIER_ORDER = ["high", "mid", "low"];
+
+// ---------- 提示框 ----------
+const tip = $("#tip");
+function bindTip(el, html) {
+  el.addEventListener("mousemove", e => { tip.innerHTML = html; tip.style.display = "block";
+    tip.style.left = Math.min(e.clientX + 12, innerWidth - 270) + "px"; tip.style.top = e.clientY + 12 + "px"; });
+  el.addEventListener("mouseleave", () => tip.style.display = "none");
+}
+
+// ---------- 看板 ----------
+async function loadDashboard() {
+  const [status, ov, mx, rep] = await Promise.all([api("/api/status"), api("/api/overview"), api("/api/matrix"), api("/api/model-report")]);
+  CUR = ov.currency;
+  const ds = status.dataset;
+  $("#mode").textContent = status.backend;
+  $("#mode").classList.toggle("on", status.llm);
+  $("#dataset").innerHTML = `演示数据：<a href="${esc(ds.url)}" target="_blank" rel="noopener">${esc(ds.name)}</a>（${esc(ds.license)}）· 观察日 ${esc(ds.snapshot_date)}`;
+
+  const kpis = [
+    ["会员总数", ov.total_members.toLocaleString(), `近 30 天活跃 ${ov.active_members_30d.toLocaleString()}`],
+    ["人均消费次数", ov.avg_orders_per_member.toFixed(1), `客单价 ${money(ov.avg_order_value)}`],
+    ["预测未来 90 天收入", moneyShort(ov.pred_revenue_next_90d), "BG/NBD × Gamma-Gamma"],
+    ["流失风险金额", moneyShort(ov.total_value_at_risk), "流失概率 × 年消费"],
+    ["高风险会员", ov.high_risk_members.toLocaleString(), `${ov.churn_horizon_days} 天流失概率 ≥ ${pct(ov.high_risk_threshold)}`],
+  ];
+  $("#kpis").innerHTML = kpis.map(([l, v, s]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`).join("");
+
+  const byName = Object.fromEntries(ov.by_stage.map(s => [s.stage_name, s]));
+  const rows = STAGE_ORDER.map(k => byName[mx.stages[k]]).filter(Boolean);
+  const max = Math.max(...rows.map(r => r.members));
+  const bars = $("#stage-bars"); bars.innerHTML = "";
+  rows.forEach(r => {
+    const name = document.createElement("div"); name.className = "name"; name.textContent = r.stage_name;
+    const track = document.createElement("div"); track.className = "track";
+    track.innerHTML = `<div class="bar" style="width:${(r.members / max * 100).toFixed(1)}%"></div>`;
+    const val = document.createElement("div"); val.className = "val";
+    val.textContent = `${r.members.toLocaleString()} · ${pct(r.member_share)} / ${pct(r.revenue_share)}`;
+    const html = `<b>${esc(r.stage_name)}</b><br>人数 ${r.members.toLocaleString()}（${pct(r.member_share)}）<br>累计收入 ${money(r.revenue)}（${pct(r.revenue_share)}）<br>流失风险金额 ${money(r.value_at_risk)}`;
+    [name, track, val].forEach(el => { bindTip(el, html); bars.appendChild(el); });
+  });
+
+  renderMatrix(mx);
+  renderModel(rep);
+  renderMemberValue(ov.member_vs_nonmember);
+}
+
+function renderMatrix(mx) {
+  const cell = Object.fromEntries(mx.cells.map(c => [`${c.stage}|${c.value_tier}`, c]));
+  const risks = mx.cells.map(c => c.value_at_risk || 0).filter(v => v > 0).sort((a, b) => a - b);
+  const q = p => risks[Math.floor(p * (risks.length - 1))] || 0;
+  const cuts = [q(.2), q(.4), q(.6), q(.8)];
+  const level = v => !v ? 0 : 1 + cuts.filter(c => v > c).length;  // 1..5
+  let html = `<tr><th></th>${TIER_ORDER.map(t => `<th>${esc(mx.tiers[t])}</th>`).join("")}</tr>`;
+  for (const s of STAGE_ORDER) {
+    html += `<tr><th>${esc(mx.stages[s])}</th>`;
+    for (const t of TIER_ORDER) {
+      const c = cell[`${s}|${t}`];
+      if (!c) { html += `<td><button disabled><span class="muted">—</span></button></td>`; continue; }
+      const lv = level(c.value_at_risk);
+      const bg = lv ? `var(--seq-${lv})` : "var(--surface-2)";
+      html += `<td><button data-stage="${s}" data-tier="${t}" class="${lv >= 4 ? "dark-cell" : ""}" style="background:${bg}">
+        <div class="n">${c.members.toLocaleString()}</div><div class="r">${moneyShort(c.value_at_risk)}</div></button></td>`;
+    }
+    html += "</tr>";
+  }
+  $("#matrix").innerHTML = html;
+  $("#matrix").querySelectorAll("button[data-stage]").forEach(b => {
+    const c = cell[`${b.dataset.stage}|${b.dataset.tier}`];
+    bindTip(b, `<b>${esc(mx.stages[c.stage])} · ${esc(mx.tiers[c.value_tier])}</b><br>${c.members} 人 · 平均流失概率 ${pct(c.avg_churn_prob)}<br>风险金额 ${money(c.value_at_risk)}<br>策略：${esc(c.strategy)}`);
+    b.addEventListener("click", () => {
+      $("#matrix").querySelectorAll("button.selected").forEach(x => x.classList.remove("selected"));
+      b.classList.add("selected");
+      loadSegment(b.dataset.stage, b.dataset.tier);
+    });
+  });
+  $("#matrix-legend").innerHTML = `风险金额 低 ${[1,2,3,4,5].map(i => `<i style="background:var(--seq-${i})"></i>`).join("")} 高`;
+}
+
+async function loadSegment(stage, tier) {
+  const [st, list] = await Promise.all([
+    api(`/api/strategy?stage=${stage}&value_tier=${tier}`),
+    api(`/api/members?stage=${stage}&value_tier=${tier}&limit=15`),
+  ]);
+  const box = $("#segment-detail"); box.hidden = false;
+  $("#segment-title").innerHTML = `${esc(st.stage)} · ${esc(st.value_tier)} <small>${st.target_members} 人，风险金额 ${money(st.group_value_at_risk)}，平均流失概率 ${pct(st.group_avg_churn_prob)}</small>`;
+  const s = st.strategy;
+  $("#segment-strategy").innerHTML = s ? `<div class="strategy"><h3>${esc(s.name)}</h3><div class="muted">${esc(s.goal)}</div>
+    <ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
+    <div><b>权益：</b>${esc(s.incentive)}</div><div><b>KPI：</b>${esc(s.kpi)}</div><div><b>频控：</b>${esc(s.guardrail)}</div></div>` : "";
+  $("#segment-list").innerHTML = `<tr><th>会员</th><th>距今</th><th>消费次数</th><th>累计消费</th><th>流失概率</th><th>风险金额</th><th>流失信号</th></tr>` +
+    list.members.map(m => `<tr class="click" data-id="${esc(m.customer_id)}"><td>${esc(m.customer_id)}</td><td>${m.recency_days} 天</td><td>${m.frequency}</td>
+      <td>${money(m.monetary)}</td><td>${pct(m.churn_prob)}</td><td>${money(m.value_at_risk)}</td><td class="reasons">${esc(m.churn_reasons || "—")}</td></tr>`).join("");
+  $("#segment-list").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => openMember(r.dataset.id)));
+  box.scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+async function openMember(id) {
+  const p = await api(`/api/members/${encodeURIComponent(id)}`);
+  const fmt = (k, v) => v == null ? "—" : typeof v !== "number" ? v
+    : /金额|消费$|客单价|收入/.test(k) && !/次数|趋势/.test(k) ? money(v)
+    : /概率|占比|比例/.test(k) ? pct(v) : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(2);
+  const kv = obj => `<dl class="kv">${Object.entries(obj).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(fmt(k, v))}</dd>`).join("")}</dl>`;
+  const s = p["推荐策略"];
+  $("#drawer").innerHTML = `<button class="close" aria-label="关闭">×</button><h3>会员 ${esc(p.customer_id)}</h3>
+    <h4>画像</h4>${kv(p["画像"])}<h4>消费行为</h4>${kv(p["消费行为"])}<h4>优惠敏感度</h4>${kv(p["优惠敏感度"])}
+    <h4>预测</h4>${kv(p["预测"])}
+    <h4>流失信号</h4><div class="reasons">${p["流失信号"].map(esc).join("<br>") || "暂无"}</div>
+    ${s ? `<h4>推荐策略</h4><div class="strategy"><h3>${esc(s.name)}</h3><ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul></div>` : ""}`;
+  $("#drawer").querySelector(".close").onclick = () => $("#drawer").close();
+  $("#drawer").showModal();
+}
+
+function renderMemberValue(v) {
+  if (!v || !v.member) return;
+  $("#member-value-card").hidden = false;
+  $("#member-value-period").textContent = `${v.period[0]} 至 ${v.period[1]}，同一时段的全部流水`;
+  const col = (name, d) => `<div><div class="muted">${name}</div>
+    收入占比 <b>${pct(d.revenue_share)}</b>（${money(d.revenue)}）<br>
+    订单数 <b>${Math.round(d.orders).toLocaleString()}</b><br>
+    客单价 <b>${money(d.aov)}</b> · 件数/单 <b>${d.items_per_order.toFixed(2)}</b></div>`;
+  $("#member-value").innerHTML = col("会员", v.member) + col("非会员", v.non_member);
+}
+
+function renderModel(r) {
+  const bt = r.clv_backtest, cv = r.churn_validation;
+  $("#model").innerHTML = `
+    <div><div class="muted">付费预测（${esc(bt.calibration_end)} 起 90 天）</div>
+      购买次数 预测 <b>${Math.round(bt.pred_total_purchases).toLocaleString()}</b> / 实际 <b>${bt.actual_total_purchases.toLocaleString()}</b><br>
+      收入 预测 <b>${money(bt.pred_total_revenue)}</b> / 实际 <b>${money(bt.actual_total_revenue)}</b><br>
+      会员价值排序相关 <b>${bt.clv_spearman}</b></div>
+    <div><div class="muted">流失预警（${esc(cv.valid_cutoff)} 起 ${cv.horizon_days} 天）</div>
+      AUC <b>${cv.auc}</b>（${cv.n.toLocaleString()} 位会员）<br>
+      风险最高 10% 中实际流失 <b>${pct(cv.top10_precision)}</b>，整体 ${pct(cv.churn_rate)}（${cv.top10_lift} 倍）<br>
+      <span class="muted">流失定义：${esc(r.churn_definition)}</span></div>`;
+}
+
+// ---------- 对话 ----------
+function md(src) {
+  const lines = esc(src).split("\n"); let out = "", list = false, table = [];
+  const inline = s => s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
+  const flushTable = () => { if (!table.length) return;
+    const rows = table.filter(r => !/^\|\s*-/.test(r)).map(r => r.replace(/^\||\|$/g, "").split("|").map(c => inline(c.trim())));
+    out += `<table>${rows.map((r, i) => `<tr>${r.map(c => i ? `<td>${c}</td>` : `<th>${c}</th>`).join("")}</tr>`).join("")}</table>`; table = []; };
+  for (const l of lines) {
+    if (/^\|/.test(l)) { table.push(l); continue; } flushTable();
+    if (/^\s*[-*] /.test(l)) { if (!list) { out += "<ul>"; list = true; } out += `<li>${inline(l.replace(/^\s*[-*] /, ""))}</li>`; continue; }
+    if (list) { out += "</ul>"; list = false; }
+    if (/^#{1,4} /.test(l)) out += `<h3>${inline(l.replace(/^#+ /, ""))}</h3>`;
+    else if (/^&gt; /.test(l)) out += `<blockquote>${inline(l.slice(5))}</blockquote>`;
+    else if (l.trim()) out += `<p>${inline(l)}</p>`;
+  }
+  flushTable(); if (list) out += "</ul>"; return out;
+}
+
+const SESSION = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+const SUGGESTIONS = ["会员整体情况怎么样？", "哪些高价值会员有流失风险？", "给衰退预警的高价值会员设计一个挽留方案并算算账", "哪些品牌的会员流失风险最高？", "会员和非会员有什么差别？", "模型准不准？"];
+function addMsg(role, html, tools) {
+  const d = document.createElement("div"); d.className = `msg ${role}`;
+  d.innerHTML = `<div class="bubble">${html}</div>` + (tools?.length ? `<div class="tools">调用：${tools.map(t => esc(t.tool)).join(" → ")}</div>` : "");
+  $("#msgs").appendChild(d); $("#msgs").scrollTop = 1e9; return d;
+}
+const ARG_NAMES = {stage: "阶段", value_tier: "价值", dimension: "维度", customer_id: "会员", sort_by: "排序", limit: "人数",
+  min_churn_prob: "最低流失概率", rfm_segment: "RFM", cost_per_member: "人均成本", retention_uplift: "挽留提升", redemption_rate: "核销率", horizon_days: "天数"};
+const argText = input => Object.entries(input || {}).map(([k, v]) => `${ARG_NAMES[k] || k}=${v}`).join("，");
+
+// 一条助手消息：上方是工具步骤，下方是逐字生成的回答
+function botBubble() {
+  const d = addMsg("bot", '<div class="steps"></div><div class="answer"></div><div class="waiting"></div>');
+  const el = {steps: d.querySelector(".steps"), answer: d.querySelector(".answer"), waiting: d.querySelector(".waiting")};
+  let text = "", frame = 0, running = null;
+  const started = Date.now();
+  const tick = setInterval(() => { el.waiting.textContent = text ? ""
+    : `${el.steps.children.length ? "整理结果中" : "思考中"}… ${Math.round((Date.now() - started) / 1000)}s`; }, 500);
+  const paint = () => { frame = 0; el.answer.innerHTML = md(text); el.answer.classList.add("caret"); $("#msgs").scrollTop = 1e9; };
+  const step = (cls, html) => { const s = document.createElement("div"); s.className = `step ${cls}`; s.innerHTML = `<span class="icon"></span>${html}`;
+    el.steps.appendChild(s); $("#msgs").scrollTop = 1e9; return s; };
+  return {
+    text(delta) { text += delta; if (!frame) frame = requestAnimationFrame(paint); },
+    toolStart(e) { text = ""; el.answer.innerHTML = "";  // 调用工具前的过渡语不保留
+      running = step("running", `<span class="verb">正在</span>${esc(e.label)}<span class="args">${esc(argText(e.input))}</span>`); },
+    toolEnd(e) { if (!running) return; running.className = `step ${e.ok ? "ok" : "fail"}`;
+      running.querySelector(".verb").textContent = e.ok ? "" : "未能";
+      if (!e.ok) running.title = e.error || ""; running = null; },
+    reset(e) { text = ""; el.answer.innerHTML = ""; step("note", esc(e.reason || "重新生成中…")); },
+    done(e) { clearInterval(tick); if (frame) cancelAnimationFrame(frame); el.waiting.textContent = "";
+      el.answer.classList.remove("caret"); el.answer.innerHTML = md(e.answer || text);
+      el.waiting.outerHTML = `<div class="tools">${Math.round((Date.now() - started) / 1000)} 秒 · ${e.mode === "offline" ? "规则引擎" : esc($("#mode").textContent)}</div>`; },
+    fail(msg) { clearInterval(tick); el.waiting.textContent = ""; el.answer.classList.remove("caret");
+      el.answer.innerHTML += `<p class="muted">出错了：${esc(msg)}</p>`; },
+  };
+}
+
+async function send(text) {
+  if (!text.trim() || $("#send").disabled) return;
+  addMsg("user", esc(text)); $("#input").value = ""; $("#send").disabled = true;
+  const bubble = botBubble();
+  try {
+    const r = await fetch("/api/chat/stream", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({session_id: SESSION, message: text})});
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "", finished = false;
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const lines = buf.split("\n"); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const e = JSON.parse(line);
+        if (e.type === "text") bubble.text(e.delta);
+        else if (e.type === "tool_start") bubble.toolStart(e);
+        else if (e.type === "tool_end") bubble.toolEnd(e);
+        else if (e.type === "reset") bubble.reset(e);
+        else if (e.type === "done") { bubble.done(e); finished = true; }
+      }
+    }
+    if (!finished) bubble.fail("连接中断");
+  } catch (e) { bubble.fail(e.message); }
+  $("#send").disabled = false;
+}
+$("#suggest").innerHTML = SUGGESTIONS.map(s => `<button type="button">${esc(s)}</button>`).join("");
+$("#suggest").querySelectorAll("button").forEach(b => b.onclick = () => send(b.textContent));
+$("#chat-form").onsubmit = e => { e.preventDefault(); send($("#input").value); };
+$("#input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($("#input").value); } });
+addMsg("bot", md("你好，我是你的会员运营助手。我已经读完会员系统里全部消费记录，可以帮你看会员结构、找流失风险、出运营方案并算账。点左侧矩阵的格子能看每类人群的策略和名单。"));
+
+loadDashboard().catch(e => addMsg("bot", `<span class="muted">看板加载失败：${esc(e.message)}。请先运行 uv run python -m member_ops.pipeline</span>`));
+</script>
+</body>
+</html>

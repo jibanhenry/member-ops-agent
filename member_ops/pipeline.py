@@ -1,0 +1,157 @@
+"""端到端管线：订单 -> 特征 -> 付费预测 / 流失预警 -> 画像与生命周期 -> 落盘。
+
+运行：uv run python -m member_ops.pipeline
+产出：
+    data/processed/members.parquet     每位会员一行：特征、预测、分群、阶段、推荐策略、流失原因
+    data/processed/model_report.json   数据概况 + 模型回测指标（用于"责任可信"展示）
+"""
+
+from __future__ import annotations
+
+import json
+import time
+
+import numpy as np
+import pandas as pd
+from scipy.stats import spearmanr
+
+from . import churn, clv, segments
+from .data import CONFIG, DATASET_INFO, PROCESSED_DIR, load_dataset
+from .features import build_snapshot, future_labels
+
+HORIZON_DAYS = 90                               # 付费预测时间窗
+CHURN_HORIZON_DAYS = CONFIG.churn_horizon_days  # 流失定义：之后 N 天不再消费，按业态频率配置
+
+
+def seasonal_factors(orders: pd.DataFrame, cutoff: pd.Timestamp) -> tuple[float, float]:
+    """BG/NBD 假设购买节奏平稳，礼品/零售有明显旺淡季（旺季不仅买得多，单笔也更大）。
+    用"去年同期"校准：在 cutoff-365 天处拟合并预测之后 90 天，
+    返回 (购买次数系数, 收入系数) = 实际 / 预测。历史不足 180 天时不校准。"""
+    ly = cutoff - pd.Timedelta(days=365)
+    if ly - orders["order_time"].min() < pd.Timedelta(days=180):
+        return 1.0, 1.0
+    snap = build_snapshot(orders, ly)
+    pred, _ = clv.fit_and_score(snap, horizon_days=(HORIZON_DAYS,))
+    actual = future_labels(orders, ly, HORIZON_DAYS).reindex(snap.index).fillna(0)
+    return (
+        float(actual["future_orders"].sum() / pred[f"pred_purchases_{HORIZON_DAYS}d"].sum()),
+        float(actual["future_amount"].sum() / pred[f"pred_clv_{HORIZON_DAYS}d"].sum()),
+    )
+
+
+def backtest_clv(orders: pd.DataFrame, end: pd.Timestamp) -> dict:
+    """在 end-90 天处拟合，预测之后 90 天，与真实发生对比。"""
+    cal = end - pd.Timedelta(days=HORIZON_DAYS)
+    snap = build_snapshot(orders, cal)
+    pred, _ = clv.fit_and_score(snap, horizon_days=(HORIZON_DAYS,))
+    actual = future_labels(orders, cal, HORIZON_DAYS).reindex(snap.index).fillna(0)
+    f_buy, f_rev = seasonal_factors(orders, cal)
+    raw_buy = pred[f"pred_purchases_{HORIZON_DAYS}d"]
+    raw_clv = pred[f"pred_clv_{HORIZON_DAYS}d"]
+    p_buy = raw_buy * f_buy
+    p_clv = raw_clv * f_rev
+    return {
+        "calibration_end": str(cal.date()),
+        "seasonal_factor_purchases": round(f_buy, 3),
+        "seasonal_factor_revenue": round(f_rev, 3),
+        "pred_total_purchases_unadjusted": round(float(raw_buy.sum()), 1),
+        "pred_total_revenue_unadjusted": round(float(raw_clv.sum()), 0),
+        "n_customers": int(len(snap)),
+        "pred_total_purchases": round(float(p_buy.sum()), 1),
+        "actual_total_purchases": int(actual["future_orders"].sum()),
+        "purchases_mae": round(float((p_buy - actual["future_orders"]).abs().mean()), 3),
+        "pred_total_revenue": round(float(p_clv.sum()), 0),
+        "actual_total_revenue": round(float(actual["future_amount"].sum()), 0),
+        "clv_spearman": round(float(spearmanr(p_clv, actual["future_amount"]).statistic), 4),
+    }
+
+
+def train_churn(orders: pd.DataFrame, end: pd.Timestamp):
+    h = CHURN_HORIZON_DAYS
+    t1 = end - pd.Timedelta(days=2 * h)
+    t2 = end - pd.Timedelta(days=h)
+    s1 = churn.in_play(build_snapshot(orders, t1))
+    s2 = churn.in_play(build_snapshot(orders, t2))
+    y1 = churn.churn_label(s1, future_labels(orders, t1, h))
+    y2 = churn.churn_label(s2, future_labels(orders, t2, h))
+    cols = churn.feature_cols(s1)
+
+    model = churn.make_model().fit(s1[cols], y1)
+    metrics = churn.evaluate(model, s2[cols], y2)
+    metrics.update(train_cutoff=str(t1.date()), valid_cutoff=str(t2.date()), horizon_days=h)
+
+    final = churn.make_model().fit(pd.concat([s1[cols], s2[cols]]), pd.concat([y1, y2]))
+    return final, cols, metrics
+
+
+def run() -> pd.DataFrame:
+    t0 = time.time()
+    orders, profiles, extra = load_dataset()
+    end = orders["order_time"].max()
+    print(f"[1/5] 订单 {len(orders):,} 笔，会员 {orders['customer_id'].nunique():,} 人，截至 {end.date()}")
+
+    clv_bt = backtest_clv(orders, end)
+    print(f"[2/5] 付费预测回测：购买 预测 {clv_bt['pred_total_purchases']:.0f} / 实际 {clv_bt['actual_total_purchases']} 次，"
+          f"收入 预测 {clv_bt['pred_total_revenue']:,.0f} / 实际 {clv_bt['actual_total_revenue']:,.0f}，"
+          f"CLV 排序相关 {clv_bt['clv_spearman']}")
+
+    churn_model, churn_cols, churn_metrics = train_churn(orders, end)
+    print(f"[3/5] 流失模型验证：AUC {churn_metrics['auc']}，Top10% 命中率 {churn_metrics['top10_precision']:.0%}"
+          f"（基线流失率 {churn_metrics['churn_rate']:.0%}）")
+
+    snap = build_snapshot(orders, end)
+    pred, clv_params = clv.fit_and_score(snap)
+    f_buy, f_rev = seasonal_factors(orders, end)
+    pred[f"pred_purchases_{HORIZON_DAYS}d"] *= f_buy
+    pred[f"pred_clv_{HORIZON_DAYS}d"] *= f_rev
+    clv_params["seasonal_factors_90d"] = {"purchases": f_buy, "revenue": f_rev}
+    members = snap.join(pred).join(profiles)
+    play = churn.in_play(members)
+    members["churn_prob"] = pd.Series(churn_model.predict_proba(play[churn_cols])[:, 1], index=play.index)
+    print("[4/5] 当前快照打分完成")
+
+    pb = segments.load_playbook()
+    members["rfm_segment"] = segments.rfm_segment(members)
+    members["value_tier"] = segments.value_tier(members, pb)
+    members["stage"] = segments.lifecycle_stage(members, pb)
+    members["stage_name"] = members["stage"].map(pb["stage_names"])
+    members["tier_name"] = members["value_tier"].map(pb["tier_names"])
+    members["strategy"] = [
+        (segments.match_strategy(s, t, pb) or {}).get("name", "")
+        for s, t in zip(members["stage"], members["value_tier"])
+    ]
+    members["churn_reasons"] = members.apply(lambda r: "；".join(churn.reason_codes(r)), axis=1)
+    # 风险金额：如果这位会员流失，按近一年消费估算每年少收入多少
+    members["amount_365d"] = (
+        orders[orders["order_time"] > end - pd.Timedelta(days=365)].groupby("customer_id")["amount"].sum()
+    ).reindex(members.index).fillna(0)
+    members["value_at_risk"] = members["churn_prob"].fillna(0) * members["amount_365d"]
+
+    members = members.reset_index()
+    members.to_parquet(PROCESSED_DIR / "members.parquet", index=False)
+
+    report = {
+        "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
+        "dataset": DATASET_INFO | {
+            "n_orders": int(len(orders)),
+            "n_members": int(members.shape[0]),
+            "date_range": [str(orders["order_time"].min().date()), str(end.date())],
+            "snapshot_date": str(end.date()),
+        },
+        "clv_backtest": clv_bt,
+        "clv_params": json.loads(json.dumps(clv_params, default=float)),
+        "churn_validation": churn_metrics,
+        **extra,
+        "churn_definition": f"在观察时点前 {churn.ACTIVE_WINDOW_DAYS} 天内有消费、且之后 {CHURN_HORIZON_DAYS} 天内未再消费",
+    }
+    (PROCESSED_DIR / "model_report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, default=lambda o: float(o) if isinstance(o, np.floating) else str(o)),
+        encoding="utf-8",
+    )
+    print(f"[5/5] 已写出 members.parquet / model_report.json（耗时 {time.time() - t0:.0f}s）")
+    print(members["stage_name"].value_counts().to_string())
+    return members
+
+
+if __name__ == "__main__":
+    run()

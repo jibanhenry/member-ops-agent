@@ -1,0 +1,18 @@
+[project]
+name = "member-ops-agent"
+version = "0.1.0"
+description = "会员运营 Agent 原型：用户画像、生命周期、付费预测、流失预警与运营策略"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    "scikit-learn>=1.5",
+    "openpyxl>=3.1",
+    "pyarrow>=16",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "anthropic>=0.70",
+    "pyyaml>=6.0.3",
+    "pyreadr>=0.5.7",
+]

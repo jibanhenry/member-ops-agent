@@ -1,0 +1,150 @@
+# 会员运营 Playbook（高频商超版，配合 MEMBER_DATASET=completejourney 使用；当前默认 playbook.yaml 是百货美妆版）
+# Agent 的判断和建议都从这里取，改这个文件就能改变产品的"运营思想"，无需改代码。
+# 修改后重新运行管线：uv run python -m member_ops.pipeline
+
+# ---------- 生命周期阶段判定（按顺序匹配，命中即停） ----------
+# 阈值取决于业态的消费频率。当前是高频零售（会员平均约 6 天消费一次）的设置；
+# 咖啡/茶饮可参考此值，瑜伽/健身/美业等按次卡业态可适当放宽，低频品类（家电等）需大幅放宽。
+lifecycle:
+  lost_recency_days: 90        # 超过 N 天未消费 -> 流失
+  dormant_recency_days: 45     # 超过 N 天未消费 -> 沉睡
+  new_tenure_days: 30          # 首次消费在 N 天内 -> 新客期
+  at_risk_churn_prob: 0.3      # 流失概率 >= 该值 -> 衰退预警（约为基线流失率的 5 倍）
+  at_risk_gap_ratio: 3.0       # 沉默时长 >= 平均消费间隔 × 该值 -> 衰退预警
+  growing_max_orders: 12       # 累计消费 <= N 次且未预警 -> 成长期；否则成熟期
+
+stage_names:
+  new: 新客期
+  growing: 成长期
+  mature: 成熟期
+  at_risk: 衰退预警
+  dormant: 沉睡
+  lost: 流失
+
+# ---------- 价值分层（按历史累计消费排名） ----------
+value_tiers:
+  high_top_pct: 0.2   # 前 20% -> 高价值
+  mid_top_pct: 0.5    # 20%~50% -> 中价值，其余低价值
+
+tier_names:
+  high: 高价值
+  mid: 中价值
+  low: 低价值
+
+# ---------- 运营策略：阶段 × 价值 -> 动作 ----------
+# tier: high / mid / low / any。匹配时优先精确 tier，其次 any。
+strategies:
+  - stage: new
+    tier: any
+    name: 首单后黄金 14 天激活
+    goal: 把首单客推向第二单，第二单是会员留存的最大分水岭
+    actions:
+      - 首单后第 1 天：发送欢迎消息 + 会员权益说明（不发券，先建立认知）
+      - 首单后第 5~7 天：根据首单品类推荐互补商品，附"第二单专享"小额券
+      - 首单后第 14 天未复购：再触达一次，强调券即将过期
+    incentive: 第二单立减，面额约为客单价的 5%~10%
+    kpi: 30 天内二次购买率
+    guardrail: 14 天内最多触达 3 次；已复购立即停止券类触达
+
+  - stage: growing
+    tier: high
+    name: 高潜成长客升级
+    goal: 加速培养购买习惯，尽早进入成熟期
+    actions:
+      - 邀请加入付费会员/储值计划，展示年度可省金额
+      - 按其购买节奏，在预计下次购买日前 2~3 天提醒
+      - 给予会员日专属价或优先购
+    incentive: 储值赠送 / 会员价，避免纯折扣券
+    kpi: 90 天内订单数、付费会员转化率
+    guardrail: 权益以"身份感"为主，避免养成只在有券时购买的习惯
+
+  - stage: growing
+    tier: any
+    name: 成长客复购节奏培养
+    goal: 稳定复购周期
+    actions:
+      - 基于平均复购间隔做到期提醒
+      - 推荐常购商品的组合装或订阅
+    incentive: 满额赠 / 组合优惠
+    kpi: 复购间隔是否缩短
+    guardrail: 同一会员每周最多 1 次营销触达
+
+  - stage: mature
+    tier: high
+    name: 核心会员维系
+    goal: 维持忠诚度、提升钱包份额，不打扰
+    actions:
+      - 专属客服或店长一对一关怀（生日、纪念日）
+      - 新品优先体验、线下活动邀请
+      - 收集反馈，邀请参与共创
+    incentive: 非金钱权益优先（身份、体验、优先权）
+    kpi: 年度留存率、客单价、NPS
+    guardrail: 不对核心会员发大额通用券，避免利润侵蚀
+
+  - stage: mature
+    tier: any
+    name: 成熟会员交叉销售
+    goal: 扩大购买品类
+    actions:
+      - 基于购买品类推荐关联商品
+      - 节日营销时优先触达
+    incentive: 跨品类首购优惠
+    kpi: 购买品类数、客单价
+    guardrail: 推荐要与历史偏好相关，避免无差别群发
+
+  - stage: at_risk
+    tier: high
+    name: 高价值衰退预警挽留
+    goal: 在真正流失前拦截，这是投入产出比最高的人群
+    actions:
+      - 48 小时内人工回访，了解是否有服务/商品问题
+      - 有差评或投诉记录的优先处理，先解决问题再谈优惠
+      - 发放定向挽留权益，附个性化推荐
+    incentive: 定向券或赠品，单人成本不超过其流失风险金额（流失概率 × 年消费）的 30%，否则挽回的钱抵不过投入
+    kpi: 30 天内回购率、挽留 ROI
+    guardrail: 人工优先于自动化群发；同一会员一个周期内只做一次大额挽留
+
+  - stage: at_risk
+    tier: any
+    name: 衰退预警自动唤醒
+    goal: 低成本拉回购买节奏
+    actions:
+      - 自动发送"好久不见"消息 + 常购商品提醒
+      - 7 天未响应再推一次限时优惠
+    incentive: 小额限时券
+    kpi: 14 天内回购率
+    guardrail: 低价值人群控制券成本，优先用内容和提醒
+
+  - stage: dormant
+    tier: high
+    name: 高价值沉睡会员召回
+    goal: 用强刺激 + 新鲜感召回
+    actions:
+      - 告知新品、新服务或门店升级
+      - 发放"老朋友回归礼"
+      - 回访了解离开原因，记录到会员档案
+    incentive: 回归礼包，成本上限参考其历史年均消费的 5%
+    kpi: 60 天召回率
+    guardrail: 召回失败的不再追加投入，转入低频内容触达
+
+  - stage: dormant
+    tier: any
+    name: 沉睡会员批量唤醒
+    goal: 筛出仍有意愿的会员
+    actions:
+      - 节日或大促节点统一推送一次
+      - 对点击/打开的会员再做二次精准触达
+    incentive: 通用优惠券
+    kpi: 触达响应率、召回率
+    guardrail: 控制频率，避免被投诉为骚扰
+
+  - stage: lost
+    tier: any
+    name: 流失会员低成本维系
+    goal: 不再重投入，保留重新激活的可能
+    actions:
+      - 仅在年度大促时触达
+      - 分析流失原因，反哺产品和服务改进
+    incentive: 无或极低
+    kpi: 流失原因归因覆盖率
+    guardrail: 不对流失会员做高成本投放
