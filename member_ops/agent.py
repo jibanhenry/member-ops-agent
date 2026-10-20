@@ -38,11 +38,15 @@ def build_system_prompt(store: MemberStore) -> str:
 - 数据：{ds['name']}（{ds['license']}）。{ds['description']}
 - 观察日：{ds['snapshot_date']}，会员 {ds['n_members']} 人，消费记录 {ds['n_orders']} 笔，金额单位 {ds['currency']}
 - 生命周期、价值分层和策略来自商家的运营 Playbook；流失概率和未来消费来自模型预测，模型可信度可用 get_model_report 查询
+- 价值分层综合历史消费和预测未来一年消费；"价值下滑"指历史排名高但预测排名低，"潜力上升"相反
+- 每位会员已排好一个下一步动作（人工回访按导购产能排队、补货窗口提醒、临近大促并入大促推送等），用 get_action_plan 看全局安排
+- 单人成本上限 = 预测未来一年消费 × 策略规定比例；价格敏感的会员才用让利型权益
 </data_context>
 
 工作方式：
 - 先用工具取数再下结论，数字以工具返回为准，不要凭空估计；工具里没有的信息（如会员姓名、投诉内容）直接说明没有。
 - 给运营方案时写清：目标人群和人数、具体动作、时机、权益和成本、衡量指标，并用 simulate_campaign 算账。挽留提升率等假设要明确标注为假设。
+- 方案里的权益成本不要超过成本上限；时机要考虑导购产能和近期大促档期，不要建议超过频控的触达。
 - 用中文回答，结论先行，适度使用小标题和列表，金额带单位。"""
 
 
@@ -298,6 +302,18 @@ def offline_answer(store: MemberStore, message: str, note: str | None = None) ->
         lines += [f"- 会员 {m['customer_id']}：{m['churn_reasons'] or '综合模型判断'}" for m in f["members"]]
         s = g["strategy"]
         lines += ["", f"**建议策略：{s['name']}**"] + [f"- {a}" for a in s["actions"]] + [f"- 频控：{s['guardrail']}"]
+        return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
+
+    if any(k in message for k in ("本周", "这周", "行动", "计划", "补货", "导购", "先联系", "大促", "档期")):
+        a = run_tool(store, "get_action_plan", {})
+        calls.append({"tool": "get_action_plan", "input": {}})
+        mn, rp = a["manual"], a["replenishment"]
+        lines += [f"### 行动计划（观察日 {a['snapshot_date']}）", "| 下一步动作 | 人数 | 风险金额 |", "|---|---|---|"]
+        lines += [f"| {x['name']} | {x['members']:,} | {_fmt_money(x['value_at_risk'], cur)} |" for x in a["actions"]]
+        lines += ["", f"- 需要导购人工跟进 {mn['demand']:,} 人，产能每周 {mn['capacity_per_week']} 人，"
+                  f"排进 {mn['max_weeks']} 周的有 {mn['scheduled']:,} 人，其余 {mn['overflow_to_auto']:,} 人转自动触达",
+                  f"- 处于补货窗口 {rp['in_window']:,} 人，按个人或品牌周期提醒",
+                  "- 近期档期：" + ("；".join(f"{e['name']} {e['start']} 起（{e['days_until']} 天后）" for e in a["upcoming_events"][:3]) or "未配置")]
         return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
 
     mv = store.report.get("member_value")

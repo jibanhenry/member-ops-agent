@@ -11,10 +11,12 @@ lifecycle:
   new_tenure_days: 30          # 首次消费在 N 天内 -> 新客期
   at_risk_churn_prob: 0.3      # 流失概率 >= 该值 -> 衰退预警（约为基线流失率的 5 倍）
   at_risk_gap_ratio: 3.0       # 沉默时长 >= 平均消费间隔 × 该值 -> 衰退预警
+  one_time_max_days: 1         # 过了新客期、有消费的天数 <= N -> 单次客
   growing_max_orders: 12       # 累计消费 <= N 次且未预警 -> 成长期；否则成熟期
 
 stage_names:
   new: 新客期
+  one_time: 单次客
   growing: 成长期
   mature: 成熟期
   at_risk: 衰退预警
@@ -31,6 +33,14 @@ tier_names:
   mid: 中价值
   low: 低价值
 
+# 补货节奏、权益选择、触达编排、大促日历未配置时使用代码里的默认值，可参照 playbook.yaml 补充
+replenishment:
+  personal_min_days: 3
+  remind_at: 0.75
+  window_days: 7
+  min_cycle_days: 3
+  max_cycle_days: 60
+
 # ---------- 运营策略：阶段 × 价值 -> 动作 ----------
 # tier: high / mid / low / any。匹配时优先精确 tier，其次 any。
 strategies:
@@ -45,6 +55,19 @@ strategies:
     incentive: 第二单立减，面额约为客单价的 5%~10%
     kpi: 30 天内二次购买率
     guardrail: 14 天内最多触达 3 次；已复购立即停止券类触达
+
+  - stage: one_time
+    tier: any
+    name: 单次客第二单激活
+    goal: 只来过一次的顾客还没形成习惯，目标是促成第二单
+    channel: auto
+    cost_cap_pct: 0.05
+    actions:
+      - 首单后按常买品类的购买周期推送补货提醒
+      - 推送一张限时的第二单优惠
+    incentive: 第二单满减，7 天内有效
+    kpi: 30 天内二次购买率
+    guardrail: 14 天内最多触达 2 次
 
   - stage: growing
     tier: high

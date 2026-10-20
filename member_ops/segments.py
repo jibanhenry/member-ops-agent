@@ -1,4 +1,4 @@
-"""用户画像：RFM 八类分群、生命周期阶段、价值分层、策略匹配。规则阈值全部来自 playbook.yaml。"""
+"""用户画像：RFM 八类分群、生命周期阶段、价值分层（历史 × 预测）、策略匹配。规则阈值全部来自 playbook.yaml。"""
 
 from __future__ import annotations
 
@@ -36,17 +36,40 @@ def rfm_segment(snap: pd.DataFrame) -> pd.Series:
     return pd.Series([RFM_NAMES[k] for k in zip(r, f, m)], index=snap.index)
 
 
+def _value_ranks(snap: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """历史累计消费排名、预测未来一年消费排名（0~1，越小越靠前）。"""
+    hist = snap["monetary"].rank(ascending=False, pct=True)
+    pred = snap["pred_clv_365d"].rank(ascending=False, pct=True) if "pred_clv_365d" in snap else hist
+    return hist, pred
+
+
 def value_tier(snap: pd.DataFrame, pb: dict) -> pd.Series:
-    pct = snap["monetary"].rank(ascending=False, pct=True)
     cfg = pb["value_tiers"]
+    hist, pred = _value_ranks(snap)
+    basis = cfg.get("basis", "history")
+    if basis == "predicted":
+        pct = pred
+    elif basis == "blend":
+        w = cfg.get("predicted_weight", 0.5)
+        pct = ((1 - w) * hist + w * pred).rank(pct=True)
+    else:
+        pct = hist
     return pd.Series(
         np.select([pct <= cfg["high_top_pct"], pct <= cfg["mid_top_pct"]], ["high", "mid"], "low"),
         index=snap.index,
     )
 
 
+def value_shift(snap: pd.DataFrame, pb: dict) -> pd.Series:
+    """历史排名靠前但预测靠后 -> 价值下滑；反过来 -> 潜力上升。"""
+    gap = pb["value_tiers"].get("shift_gap", 0.4)
+    hist, pred = _value_ranks(snap)
+    d = pred - hist
+    return pd.Series(np.select([d >= gap, d <= -gap], ["价值下滑", "潜力上升"], ""), index=snap.index)
+
+
 def lifecycle_stage(df: pd.DataFrame, pb: dict) -> pd.Series:
-    """df 需包含 recency_days / tenure_days / frequency / recency_gap_ratio / churn_prob / cutoff，可选 reg_date。"""
+    """df 需包含 recency_days / tenure_days / n_days / frequency / recency_gap_ratio / churn_prob / cutoff，可选 reg_date。"""
     c = pb["lifecycle"]
     churn_prob = df["churn_prob"].fillna(0)
     gap_ratio = df["recency_gap_ratio"].fillna(0)
@@ -55,14 +78,19 @@ def lifecycle_stage(df: pd.DataFrame, pb: dict) -> pd.Series:
     if "reg_date" in df.columns:
         reg_days = (df["cutoff"] - pd.to_datetime(df["reg_date"])).dt.days
         tenure = reg_days.fillna(tenure)
+    # 单次客：过了新客期还没有第二次到柜，运营目标是第二单而不是"挽留"
+    one_time = df["n_days"] <= c.get("one_time_max_days", 1)
+    if "one_time" not in pb["stage_names"]:
+        one_time = pd.Series(False, index=df.index)
     conditions = [
         df["recency_days"] > c["lost_recency_days"],
         df["recency_days"] > c["dormant_recency_days"],
         tenure <= c["new_tenure_days"],
+        one_time,
         (churn_prob >= c["at_risk_churn_prob"]) | (gap_ratio >= c["at_risk_gap_ratio"]),
         df["frequency"] <= c["growing_max_orders"],
     ]
-    choices = ["lost", "dormant", "new", "at_risk", "growing"]
+    choices = ["lost", "dormant", "new", "one_time", "at_risk", "growing"]
     return pd.Series(np.select(conditions, choices, "mature"), index=df.index)
 
 

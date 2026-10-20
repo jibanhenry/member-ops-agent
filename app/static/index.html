@@ -88,6 +88,16 @@ table { border-collapse: collapse; width: 100%; }
 .strategy h3 { margin: 0 0 4px; font-size: 14px; }
 .strategy ul { margin: 6px 0; padding-left: 18px; }
 .muted { color: var(--text-muted); }
+.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 99px; background: var(--surface-2); color: var(--text-secondary); margin-left: 4px; white-space: nowrap; }
+.plan { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+.plan .note { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+.plan .note p { margin: 2px 0; }
+.events { list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
+.events li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.season { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; align-items: end; height: 70px; }
+.season div { background: var(--series-1); border-radius: 3px 3px 0 0; min-height: 2px; }
+.season-x { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 2px; }
+.strategy .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 12px; margin-top: 6px; }
 .model { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px; }
 .model b { font-variant-numeric: tabular-nums; }
 /* 会员抽屉 */
@@ -145,7 +155,7 @@ form button:disabled { opacity: .5; cursor: wait; }
 @media (max-width: 600px) {
   header, .layout { padding-left: 16px; padding-right: 16px; }
   .bars { grid-template-columns: 60px minmax(0, 1fr) 110px; }
-  .model { grid-template-columns: minmax(0, 1fr); }
+  .model, .plan { grid-template-columns: minmax(0, 1fr); }
   .matrix-wrap { overflow-x: auto; }
 }
 </style>
@@ -160,6 +170,15 @@ form button:disabled { opacity: .5; cursor: wait; }
 <div class="layout">
   <main>
     <section class="kpis" id="kpis"></section>
+
+    <section class="card">
+      <h2>行动计划 <small>每位会员只排一个下一步动作；点击一行查看名单</small></h2>
+      <div class="plan">
+        <div><table class="list" id="plan-actions"></table><div class="note" id="plan-note"></div></div>
+        <div><div class="muted" style="font-size:12px;margin-bottom:4px">近期大促档期</div><ul class="events" id="plan-events"></ul>
+          <div class="muted" style="font-size:12px;margin-bottom:4px">各月收入占比</div><div class="season" id="season"></div><div class="season-x" id="season-x"></div></div>
+      </div>
+    </section>
 
     <section class="card">
       <h2>生命周期结构 <small>会员人数；右侧为人数占比 / 收入占比</small></h2>
@@ -213,7 +232,7 @@ const money = v => v == null ? "—" : `${{USD: "$", CNY: "¥"}[CUR] || ""}${Mat
 const moneyShort = v => v == null ? "—" : CUR !== "CNY" || Math.abs(v) < 1e4 ? money(v)
   : Math.abs(v) >= 1e8 ? `¥${(v / 1e8).toFixed(2)} 亿` : `¥${Math.round(v / 1e4).toLocaleString()} 万`;
 const pct = v => v == null ? "—" : `${(v * 100).toFixed(0)}%`;
-const STAGE_ORDER = ["new", "growing", "mature", "at_risk", "dormant", "lost"];
+let STAGE_ORDER = [];  // 取自 Playbook 的 stage_names 顺序
 const TIER_ORDER = ["high", "mid", "low"];
 
 // ---------- 提示框 ----------
@@ -226,8 +245,10 @@ function bindTip(el, html) {
 
 // ---------- 看板 ----------
 async function loadDashboard() {
-  const [status, ov, mx, rep] = await Promise.all([api("/api/status"), api("/api/overview"), api("/api/matrix"), api("/api/model-report")]);
+  const [status, ov, mx, rep, plan] = await Promise.all([api("/api/status"), api("/api/overview"), api("/api/matrix"),
+    api("/api/model-report"), api("/api/action-plan")]);
   CUR = ov.currency;
+  STAGE_ORDER = Object.keys(mx.stages);
   const ds = status.dataset;
   $("#mode").textContent = status.backend;
   $("#mode").classList.toggle("on", status.llm);
@@ -256,6 +277,7 @@ async function loadDashboard() {
     [name, track, val].forEach(el => { bindTip(el, html); bars.appendChild(el); });
   });
 
+  renderPlan(plan);
   renderMatrix(mx);
   renderModel(rep);
   renderMemberValue(ov.member_vs_nonmember);
@@ -293,36 +315,77 @@ function renderMatrix(mx) {
   $("#matrix-legend").innerHTML = `风险金额 低 ${[1,2,3,4,5].map(i => `<i style="background:var(--seq-${i})"></i>`).join("")} 高`;
 }
 
+function renderPlan(a) {
+  $("#plan-actions").innerHTML = `<tr><th>下一步动作</th><th>人数</th><th>风险金额</th></tr>` +
+    a.actions.map(x => `<tr class="click" data-type="${esc(x.action_type)}"><td>${esc(x.name)}</td><td>${x.members.toLocaleString()}</td><td>${moneyShort(x.value_at_risk)}</td></tr>`).join("");
+  $("#plan-actions").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => loadActionList(r.dataset.type)));
+  const mn = a.manual, cp = a.contact_policy;
+  $("#plan-note").innerHTML = `<p>需要导购人工跟进 <b>${mn.demand.toLocaleString()}</b> 人，产能每周 ${mn.capacity_per_week} 人，排满需 ${mn.weeks_to_clear} 周；
+    排进前 ${mn.max_weeks} 周的 ${mn.scheduled.toLocaleString()} 人，其余 ${mn.overflow_to_auto.toLocaleString()} 人转自动触达。</p>
+    <p>补货窗口内 <b>${a.replenishment.in_window.toLocaleString()}</b> 人，按个人节奏或品牌周期提醒。</p>
+    <p class="muted">频控：每人每周最多 ${cp.max_touches_per_week} 次、每月 ${cp.max_touches_per_month} 次；大促前 ${cp.promo_quiet_days} 天内的自动挽留并入大促。
+    价格敏感会员占 ${pct(a.price_sensitive_share)}，只有他们拿让利型权益。</p>`;
+  $("#plan-events").innerHTML = a.upcoming_events.length
+    ? a.upcoming_events.map(e => `<li><span>${esc(e.name)}</span><span class="muted">${esc(e.start.slice(5))} 起 · ${e.days_until ? e.days_until + " 天后" : "进行中"}</span></li>`).join("")
+    : `<li class="muted">Playbook 未配置大促档期</li>`;
+  const ss = a.seasonality || {}, months = Array.from({length: 12}, (_, i) => i + 1), mx = Math.max(...months.map(m => ss[m] || 0)) || 1;
+  const season = $("#season"); season.innerHTML = "";
+  months.forEach(m => { const d = document.createElement("div"); d.style.height = `${((ss[m] || 0) / mx * 100).toFixed(0)}%`;
+    bindTip(d, `${m} 月：收入占全年 ${pct(ss[m])}`); season.appendChild(d); });
+  $("#season-x").innerHTML = months.map(m => `<span>${m}</span>`).join("");
+}
+
+function renderList(list, title, strategyHtml) {
+  const box = $("#segment-detail"); box.hidden = false;
+  $("#segment-title").innerHTML = title;
+  $("#segment-strategy").innerHTML = strategyHtml || "";
+  $("#segment-list").innerHTML = `<tr><th>会员</th><th>距今</th><th>消费次数</th><th>累计消费</th><th>流失概率</th><th>风险金额</th><th>流失信号</th><th>下一步</th></tr>` +
+    list.members.map(m => `<tr class="click" data-id="${esc(m.customer_id)}"><td>${esc(m.customer_id)}${m.value_shift ? `<span class="tag">${esc(m.value_shift)}</span>` : ""}</td>
+      <td>${m.recency_days} 天</td><td>${m.frequency}</td><td>${money(m.monetary)}</td><td>${pct(m.churn_prob)}</td><td>${money(m.value_at_risk)}</td>
+      <td class="reasons">${esc(m.churn_reasons || "—")}</td><td class="reasons">${esc(m.next_action || "—")}${m.next_action_date ? `<br>${esc(m.next_action_date)}` : ""}</td></tr>`).join("");
+  $("#segment-list").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => openMember(r.dataset.id)));
+  box.scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+const CHANNEL = {manual: "导购人工（按风险金额排队）", auto: "自动触达", promo_only: "只在大促触达"};
+
 async function loadSegment(stage, tier) {
   const [st, list] = await Promise.all([
     api(`/api/strategy?stage=${stage}&value_tier=${tier}`),
     api(`/api/members?stage=${stage}&value_tier=${tier}&limit=15`),
   ]);
-  const box = $("#segment-detail"); box.hidden = false;
-  $("#segment-title").innerHTML = `${esc(st.stage)} · ${esc(st.value_tier)} <small>${st.target_members} 人，风险金额 ${money(st.group_value_at_risk)}，平均流失概率 ${pct(st.group_avg_churn_prob)}</small>`;
   const s = st.strategy;
-  $("#segment-strategy").innerHTML = s ? `<div class="strategy"><h3>${esc(s.name)}</h3><div class="muted">${esc(s.goal)}</div>
+  const acts = Object.entries(st.next_actions || {}).map(([k, v]) => `${esc(k)} ${v.toLocaleString()}`).join("，");
+  const html = s ? `<div class="strategy"><h3>${esc(s.name)}</h3><div class="muted">${esc(s.goal)}</div>
     <ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
-    <div><b>权益：</b>${esc(s.incentive)}</div><div><b>KPI：</b>${esc(s.kpi)}</div><div><b>频控：</b>${esc(s.guardrail)}</div></div>` : "";
-  $("#segment-list").innerHTML = `<tr><th>会员</th><th>距今</th><th>消费次数</th><th>累计消费</th><th>流失概率</th><th>风险金额</th><th>流失信号</th></tr>` +
-    list.members.map(m => `<tr class="click" data-id="${esc(m.customer_id)}"><td>${esc(m.customer_id)}</td><td>${m.recency_days} 天</td><td>${m.frequency}</td>
-      <td>${money(m.monetary)}</td><td>${pct(m.churn_prob)}</td><td>${money(m.value_at_risk)}</td><td class="reasons">${esc(m.churn_reasons || "—")}</td></tr>`).join("");
-  $("#segment-list").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => openMember(r.dataset.id)));
-  box.scrollIntoView({behavior: "smooth", block: "start"});
+    <div><b>权益：</b>${esc(s.incentive)}${s.incentive_price_sensitive ? `<br><b>价格敏感会员（${(st.price_sensitive_members || 0).toLocaleString()} 人）：</b>${esc(s.incentive_price_sensitive)}` : ""}</div>
+    <div class="meta"><div><b>渠道：</b>${esc(CHANNEL[s.channel] || s.channel || "—")}</div>
+      <div><b>单人成本上限：</b>人均 ${money(st.avg_cost_cap_per_member)}（预测年消费 × ${pct(s.cost_cap_pct)}）</div>
+      <div><b>KPI：</b>${esc(s.kpi)}</div><div><b>频控：</b>${esc(s.guardrail)}</div></div>
+    ${acts ? `<div class="muted" style="margin-top:6px">下一步安排：${acts}</div>` : ""}</div>` : "";
+  renderList(list, `${esc(st.stage)} · ${esc(st.value_tier)} <small>${st.target_members} 人，风险金额 ${money(st.group_value_at_risk)}，平均流失概率 ${pct(st.group_avg_churn_prob)}</small>`, html);
+}
+
+async function loadActionList(type) {
+  $("#matrix").querySelectorAll("button.selected").forEach(x => x.classList.remove("selected"));
+  const list = await api(`/api/members?action_type=${type}&limit=15`);
+  const name = $(`#plan-actions tr[data-type="${type}"] td`).textContent;
+  renderList(list, `${esc(name)} <small>${list.matched.toLocaleString()} 人，风险金额 ${money(list.matched_value_at_risk)}，按风险金额排序</small>`);
 }
 
 async function openMember(id) {
   const p = await api(`/api/members/${encodeURIComponent(id)}`);
-  const fmt = (k, v) => v == null ? "—" : typeof v !== "number" ? v
-    : /金额|消费$|客单价|收入/.test(k) && !/次数|趋势/.test(k) ? money(v)
+  const fmt = (k, v) => v == null || v === "" ? "—" : typeof v === "boolean" ? (v ? "是" : "否") : typeof v !== "number" ? v
+    : /金额|消费$|客单价|收入|成本/.test(k) && !/次数|趋势/.test(k) ? money(v)
     : /概率|占比|比例/.test(k) ? pct(v) : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(2);
   const kv = obj => `<dl class="kv">${Object.entries(obj).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(fmt(k, v))}</dd>`).join("")}</dl>`;
+  const sections = Object.entries(p).filter(([k, v]) => v && typeof v === "object" && !Array.isArray(v) && k !== "推荐策略");
   const s = p["推荐策略"];
   $("#drawer").innerHTML = `<button class="close" aria-label="关闭">×</button><h3>会员 ${esc(p.customer_id)}</h3>
-    <h4>画像</h4>${kv(p["画像"])}<h4>消费行为</h4>${kv(p["消费行为"])}<h4>优惠敏感度</h4>${kv(p["优惠敏感度"])}
-    <h4>预测</h4>${kv(p["预测"])}
+    ${sections.map(([k, v]) => `<h4>${esc(k)}</h4>${kv(v)}`).join("")}
     <h4>流失信号</h4><div class="reasons">${p["流失信号"].map(esc).join("<br>") || "暂无"}</div>
-    ${s ? `<h4>推荐策略</h4><div class="strategy"><h3>${esc(s.name)}</h3><ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul></div>` : ""}`;
+    ${s ? `<h4>推荐策略</h4><div class="strategy"><h3>${esc(s.name)}</h3><ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
+      ${s.applied_incentive ? `<div><b>适用权益：</b>${esc(s.applied_incentive)}</div>` : ""}</div>` : ""}`;
   $("#drawer").querySelector(".close").onclick = () => $("#drawer").close();
   $("#drawer").showModal();
 }
@@ -370,7 +433,7 @@ function md(src) {
 }
 
 const SESSION = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
-const SUGGESTIONS = ["会员整体情况怎么样？", "哪些高价值会员有流失风险？", "给衰退预警的高价值会员设计一个挽留方案并算算账", "哪些品牌的会员流失风险最高？", "会员和非会员有什么差别？", "模型准不准？"];
+const SUGGESTIONS = ["会员整体情况怎么样？", "这周导购应该先联系谁？", "哪些高价值会员有流失风险？", "给衰退预警的高价值会员设计一个挽留方案并算算账", "哪些品牌的会员流失风险最高？", "会员和非会员有什么差别？", "模型准不准？"];
 function addMsg(role, html, tools) {
   const d = document.createElement("div"); d.className = `msg ${role}`;
   d.innerHTML = `<div class="bubble">${html}</div>` + (tools?.length ? `<div class="tools">调用：${tools.map(t => esc(t.tool)).join(" → ")}</div>` : "");

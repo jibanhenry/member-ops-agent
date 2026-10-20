@@ -12,6 +12,7 @@ from functools import cached_property
 import pandas as pd
 import pyarrow.parquet as pq
 
+from . import actions
 from .data import PROCESSED_DIR
 from .segments import load_playbook, match_strategy
 
@@ -21,6 +22,7 @@ MEMBERS_PATH = PROCESSED_DIR / "members.parquet"
 _ALL_DIMENSIONS = {
     "stage": "生命周期阶段",
     "value_tier": "价值分层",
+    "action_type": "下一步动作",
     "rfm_segment": "RFM 分群",
     "top_brand": "主要消费品牌",
     "age_band": "年龄段",
@@ -39,7 +41,7 @@ if "age_band" in DIMENSIONS:  # 有年龄段时不按原始年龄拆分
 # 会员画像弹窗/工具返回的字段：(列名, 中文名)，数据里没有的列自动跳过
 PROFILE_SECTIONS = {
     "画像": [
-        ("stage_name", "生命周期"), ("tier_name", "价值分层"), ("rfm_segment", "RFM 分群"),
+        ("stage_name", "生命周期"), ("tier_name", "价值分层"), ("value_shift", "价值变化"), ("rfm_segment", "RFM 分群"),
         ("gender", "性别"), ("age", "年龄"), ("reg_date", "入会时间"), ("member_years", "入会年限"),
         ("top_brand", "主要消费品牌"), ("n_brands", "购买过的品牌数"),
         ("top_department", "主要消费品类"), ("private_label_share", "自有品牌占比"), ("n_stores", "常去门店数"),
@@ -53,13 +55,22 @@ PROFILE_SECTIONS = {
     "优惠与积分": [
         ("discount_rate", "优惠占原价比例"), ("coupon_order_share", "用券订单占比"),
         ("points_total", "累计积分"), ("campaigns_received", "收到营销活动数"), ("coupons_redeemed", "核销优惠券数"),
+        ("price_sensitive", "价格敏感"),
+    ],
+    "运营编排": [
+        ("next_action", "下一步动作"), ("next_action_date", "动作日期"), ("channel_name", "触达方式"),
+        ("cost_cap", "单人成本上限"), ("cycle_days", "补货周期天数"), ("cycle_source", "周期依据"),
+        ("replenish_date", "补货提醒日"), ("replenish_status", "补货状态"),
     ],
 }
+CHANNEL_NAMES = {"manual": "导购人工", "auto": "自动触达", "promo_only": "只在大促触达"}
 SORT_FIELDS = {"value_at_risk", "churn_prob", "pred_clv_365d", "monetary", "recency_days", "frequency"}
 
 
 def _clean(obj):
     """NaN/numpy -> JSON 友好类型。"""
+    if obj is pd.NaT:
+        return None
     if isinstance(obj, dict):
         return {k: _clean(v) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -78,6 +89,9 @@ class MemberStore:
         self.members = pd.read_parquet(PROCESSED_DIR / "members.parquet").set_index("customer_id")
         self.report = json.loads((PROCESSED_DIR / "model_report.json").read_text(encoding="utf-8"))
         self.playbook = load_playbook()
+        if "channel" in self.members.columns:
+            self.members["channel_name"] = self.members["channel"].map(CHANNEL_NAMES)
+            self.members["action_name"] = self.members["action_type"].map(actions.ACTION_NAMES)
 
     @cached_property
     def currency(self) -> str:
@@ -120,6 +134,8 @@ class MemberStore:
         if dimension not in DIMENSIONS:
             raise ValueError(f"dimension 必须是 {list(DIMENSIONS)} 之一")
         m = self.members
+        if dimension == "action_type":
+            m = m.assign(action_type=m["action_name"])
         g = m.groupby(dimension, dropna=True)
         metrics = {
             "members": g.size(),
@@ -149,8 +165,12 @@ class MemberStore:
 
     def find_members(self, stage: str | None = None, value_tier: str | None = None,
                      rfm_segment: str | None = None, min_churn_prob: float | None = None,
-                     sort_by: str = "value_at_risk", limit: int = 10) -> dict:
+                     action_type: str | None = None, sort_by: str = "value_at_risk", limit: int = 10) -> dict:
         m = self.members
+        if action_type:
+            if action_type not in actions.ACTION_NAMES:
+                raise ValueError(f"action_type 必须是 {list(actions.ACTION_NAMES)} 之一")
+            m = m[m["action_type"] == action_type]
         if stage:
             m = m[(m["stage"] == stage) | (m["stage_name"] == stage)]
         if value_tier:
@@ -167,8 +187,10 @@ class MemberStore:
         if sort_by not in SORT_FIELDS:
             raise ValueError(f"sort_by 必须是 {sorted(SORT_FIELDS)} 之一")
         limit = max(1, min(int(limit), 50))
-        cols = ["stage_name", "tier_name", "rfm_segment", "recency_days", "frequency", "monetary",
-                "churn_prob", "pred_clv_365d", "value_at_risk", "strategy", "churn_reasons"]
+        cols = ["stage_name", "tier_name", "value_shift", "rfm_segment", "recency_days", "frequency", "monetary",
+                "churn_prob", "pred_clv_365d", "value_at_risk", "strategy", "churn_reasons",
+                "next_action", "next_action_date", "cost_cap"]
+        cols = [c for c in cols if c in m.columns]
         top = m.sort_values(sort_by, ascending=False).head(limit)
         return _clean({
             "hint": hint,
@@ -193,6 +215,8 @@ class MemberStore:
             "流失风险金额": r["value_at_risk"],
         }
         out["流失信号"] = [x for x in (r["churn_reasons"] or "").split("；") if x]
+        if strategy and "price_sensitive" in r.index:
+            strategy = strategy | {"applied_incentive": actions.pick_incentive(strategy, bool(r["price_sensitive"]))}
         out["推荐策略"] = strategy
         out["currency"] = self.currency
         return _clean(out)
@@ -208,8 +232,13 @@ class MemberStore:
             "target_members": len(group),
             "group_value_at_risk": group["value_at_risk"].sum(),
             "group_avg_churn_prob": group["churn_prob"].mean(),
-            "group_avg_discount_rate": group["discount_rate"].mean(),
+            "group_avg_discount_rate": group["discount_rate"].mean() if "discount_rate" in group else None,
+            "price_sensitive_members": int(group["price_sensitive"].sum()) if "price_sensitive" in group else None,
+            "avg_cost_cap_per_member": group["cost_cap"].mean() if "cost_cap" in group else None,
+            "total_budget_cap": group["cost_cap"].sum() if "cost_cap" in group else None,
+            "next_actions": group["action_name"].value_counts().to_dict() if "action_name" in group else None,
             "strategy": strategy,
+            "说明": "单人成本上限 = 预测未来一年消费 × cost_cap_pct；价格敏感的会员用 incentive_price_sensitive，其余用 incentive",
         })
 
     def simulate_campaign(self, stage: str, value_tier: str, cost_per_member: float,
@@ -224,8 +253,15 @@ class MemberStore:
         g = self.members[(self.members["stage"] == stage) & (self.members["value_tier"] == value_tier)]
         saved = (g["churn_prob"].fillna(0) * retention_uplift * g["amount_365d"] * horizon_days / 365).sum()
         cost = len(g) * cost_per_member * redemption_rate
+        cap = g["cost_cap"].mean() if "cost_cap" in g and len(g) else None
+        warning = None
+        if cap is not None and cost_per_member > cap:
+            warning = (f"单人成本 {cost_per_member:,.0f} 超过该人群人均成本上限 {cap:,.0f}"
+                       "（预测未来一年消费 × Playbook 规定比例），建议降低权益成本或改用非金钱权益")
         return _clean({
             "target_members": len(g),
+            "avg_cost_cap_per_member": cap,
+            "cost_cap_warning": warning,
             "expected_saved_revenue": saved,
             "expected_cost": cost,
             "roi": (saved - cost) / cost if cost else None,
@@ -236,6 +272,41 @@ class MemberStore:
                 "说明": "挽留提升率是假设值，需用 A/B 对照组验证；挽回收入按会员近一年消费折算",
             },
             "currency": self.currency,
+        })
+
+    def get_action_plan(self) -> dict:
+        """本周行动计划：各类下一步动作的人数、人工回访产能与积压、补货窗口、近期大促档期。"""
+        m = self.members
+        cp = actions.cfg(self.playbook, "contact_policy")
+        cutoff = pd.Timestamp(self.report["dataset"]["snapshot_date"])
+        g = m.groupby("action_type").agg(members=("frequency", "size"), value_at_risk=("value_at_risk", "sum"),
+                                         pred_revenue_next_90d=("pred_clv_90d", "sum"))
+        acts = [{"action_type": k, "name": actions.ACTION_NAMES[k], **g.loc[k].to_dict(), "members": int(g.loc[k, "members"])}
+                for k in actions.ACTION_NAMES if k in g.index]
+        demand = int((m["channel"] == "manual").sum())
+        cap = cp["manual_capacity_per_week"]
+        scheduled = int(m["action_type"].isin(["manual", "manual_queue"]).sum())
+        due = m[m["replenish_status"] == "补货窗口"]
+        return _clean({
+            "snapshot_date": str(cutoff.date()),
+            "currency": self.currency,
+            "actions": acts,
+            "manual": {
+                "demand": demand, "capacity_per_week": cap, "max_weeks": cp["manual_max_weeks"],
+                "weeks_to_clear": -(-demand // cap) if cap else None,
+                "scheduled": scheduled, "overflow_to_auto": demand - scheduled,
+                "说明": "需要导购人工跟进的会员按风险金额排队；排不进的转自动触达。产能在 Playbook contact_policy 中配置",
+            },
+            "replenishment": {
+                "in_window": len(due), "in_window_pred_revenue_90d": due["pred_clv_90d"].sum(),
+                "cycle_source": m["cycle_source"].value_counts().to_dict(),
+                "overall_median_cycle_days": self.report.get("replenish_cycle", {}).get("overall_median_days"),
+            },
+            "upcoming_events": [e | {"start": str(e["start"].date()), "end": str(e["end"].date())}
+                                for e in actions.upcoming_events(cutoff, self.playbook, 180)],
+            "contact_policy": cp,
+            "price_sensitive_share": m["price_sensitive"].mean(),
+            "seasonality": self.report.get("seasonality"),
         })
 
     def get_model_report(self) -> dict:
@@ -262,10 +333,12 @@ TOOL_LABELS = {
     "get_member_profile": "读取会员画像",
     "get_strategy": "查询运营策略",
     "simulate_campaign": "测算活动投入产出",
+    "get_action_plan": "查看本周行动计划",
     "get_model_report": "查看模型可信度",
 }
 
-_STAGES = ["new", "growing", "mature", "at_risk", "dormant", "lost"]
+_STAGES = list(load_playbook()["stage_names"])
+_STAGE_DESC = " / ".join(f"{k} {v}" for k, v in load_playbook()["stage_names"].items())
 _TIERS = ["high", "mid", "low"]
 
 TOOL_SPECS = [
@@ -287,14 +360,16 @@ TOOL_SPECS = [
     },
     {
         "name": "find_members",
-        "description": "按条件筛选会员名单并排序，返回匹配人数、合计风险金额和前 N 位会员（含流失原因和推荐策略）。用于圈选运营人群。",
+        "description": "按条件筛选会员名单并排序，返回匹配人数、合计风险金额和前 N 位会员（含流失原因、推荐策略、下一步动作和日期、单人成本上限）。用于圈选运营人群。",
         "input_schema": {
             "type": "object",
             "properties": {
-                "stage": {"type": "string", "enum": _STAGES, "description": "生命周期：new 新客期 / growing 成长期 / mature 成熟期 / at_risk 衰退预警 / dormant 沉睡 / lost 流失"},
+                "stage": {"type": "string", "enum": _STAGES, "description": "生命周期：" + _STAGE_DESC},
                 "value_tier": {"type": "string", "enum": _TIERS, "description": "价值分层：high / mid / low"},
                 "rfm_segment": {"type": "string", "description": "RFM 八类之一，如 重要价值客户、重要挽留客户"},
                 "min_churn_prob": {"type": "number", "description": "最低流失概率 0~1"},
+                "action_type": {"type": "string", "enum": list(actions.ACTION_NAMES),
+                                "description": "下一步动作：" + "，".join(f"{k}={v}" for k, v in actions.ACTION_NAMES.items())},
                 "sort_by": {"type": "string", "enum": sorted(SORT_FIELDS), "description": "排序字段，默认 value_at_risk（流失风险金额）"},
                 "limit": {"type": "integer", "description": "返回人数，1~50，默认 10"},
             },
@@ -303,7 +378,7 @@ TOOL_SPECS = [
     },
     {
         "name": "get_member_profile",
-        "description": "单个会员的完整画像：生命周期、价值、品类偏好、人口属性、消费行为、优惠敏感度、预测指标、流失信号和推荐策略。",
+        "description": "单个会员的完整画像：生命周期、价值及变化、品类偏好、人口属性、消费行为、优惠敏感度、预测指标、流失信号、推荐策略和适用权益、补货周期、下一步动作。",
         "input_schema": {
             "type": "object",
             "properties": {"customer_id": {"type": "string", "description": "会员 ID"}},
@@ -313,7 +388,7 @@ TOOL_SPECS = [
     },
     {
         "name": "get_strategy",
-        "description": "查询运营 Playbook 中某个 生命周期×价值分层 人群的标准策略（目标、动作、权益、KPI、频控），并附上该人群的规模和风险。",
+        "description": "查询运营 Playbook 中某个 生命周期×价值分层 人群的标准策略（目标、动作、渠道、默认权益与价格敏感会员权益、KPI、频控），并附上该人群的规模、风险、价格敏感人数、单人成本上限和下一步动作分布。",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -326,7 +401,7 @@ TOOL_SPECS = [
     },
     {
         "name": "simulate_campaign",
-        "description": "估算针对某人群做挽留/召回活动的投入产出：目标人数、预计挽回收入、成本、ROI、盈亏平衡所需的挽留提升率。给方案时用它算账。",
+        "description": "估算针对某人群做挽留/召回活动的投入产出：目标人数、预计挽回收入、成本、ROI、盈亏平衡所需的挽留提升率，并检查单人成本是否超过 Playbook 的成本上限。给方案时用它算账。",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -340,6 +415,11 @@ TOOL_SPECS = [
             "required": ["stage", "value_tier", "cost_per_member", "retention_uplift"],
             "additionalProperties": False,
         },
+    },
+    {
+        "name": "get_action_plan",
+        "description": "本周行动计划：每位会员只安排一个下一步动作（人工回访/补货提醒/并入大促/自动触达/暂不打扰/仅大促），返回各类人数和风险金额、导购人工产能与积压周数、补货窗口人数、近期大促档期、频控规则和月度收入季节性。被问到'这周先做什么''导购先联系谁''什么时候发'时调用。",
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     {
         "name": "get_model_report",

@@ -68,8 +68,9 @@ def segments(dimension: str = "stage"):
 
 
 @app.get("/api/members")
-def members(stage: str | None = None, value_tier: str | None = None, sort_by: str = "value_at_risk", limit: int = 20):
-    return _tool("find_members", stage=stage, value_tier=value_tier, sort_by=sort_by, limit=limit)
+def members(stage: str | None = None, value_tier: str | None = None, action_type: str | None = None,
+            sort_by: str = "value_at_risk", limit: int = 20):
+    return _tool("find_members", stage=stage, value_tier=value_tier, action_type=action_type, sort_by=sort_by, limit=limit)
 
 
 @app.get("/api/members/{customer_id}")
@@ -80,6 +81,11 @@ def member(customer_id: str):
 @app.get("/api/strategy")
 def strategy(stage: str, value_tier: str):
     return _tool("get_strategy", stage=stage, value_tier=value_tier)
+
+
+@app.get("/api/action-plan")
+def action_plan():
+    return _tool("get_action_plan")
 
 
 @app.get("/api/model-report")

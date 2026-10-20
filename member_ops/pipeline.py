@@ -2,7 +2,7 @@
 
 运行：uv run python -m member_ops.pipeline
 产出：
-    data/processed/members.parquet     每位会员一行：特征、预测、分群、阶段、推荐策略、流失原因
+    data/processed/members.parquet     每位会员一行：特征、预测、分群、阶段、推荐策略、流失原因、下一步动作
     data/processed/model_report.json   数据概况 + 模型回测指标（用于"责任可信"展示）
 """
 
@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-from . import churn, clv, segments
+from . import actions, churn, clv, segments
 from .data import CONFIG, DATASET_INFO, PROCESSED_DIR, load_dataset
 from .features import build_snapshot, future_labels
 
@@ -113,6 +113,7 @@ def run() -> pd.DataFrame:
     pb = segments.load_playbook()
     members["rfm_segment"] = segments.rfm_segment(members)
     members["value_tier"] = segments.value_tier(members, pb)
+    members["value_shift"] = segments.value_shift(members, pb)
     members["stage"] = segments.lifecycle_stage(members, pb)
     members["stage_name"] = members["stage"].map(pb["stage_names"])
     members["tier_name"] = members["value_tier"].map(pb["tier_names"])
@@ -126,6 +127,13 @@ def run() -> pd.DataFrame:
         orders[orders["order_time"] > end - pd.Timedelta(days=365)].groupby("customer_id")["amount"].sum()
     ).reindex(members.index).fillna(0)
     members["value_at_risk"] = members["churn_prob"].fillna(0) * members["amount_365d"]
+
+    # 行动编排：补货节奏、权益、成本上限、下一步动作
+    rep = actions.cfg(pb, "replenishment")
+    b_cycle, overall_cycle = actions.brand_cycles(orders, rep["brand_min_pairs"])
+    members = members.join(actions.purchase_cycle(members, b_cycle, overall_cycle, end, pb))
+    members["price_sensitive"] = actions.price_sensitive(members, pb)
+    members = members.join(actions.plan_actions(members, end, pb))
 
     members = members.reset_index()
     members.to_parquet(PROCESSED_DIR / "members.parquet", index=False)
@@ -141,6 +149,9 @@ def run() -> pd.DataFrame:
         "clv_backtest": clv_bt,
         "clv_params": json.loads(json.dumps(clv_params, default=float)),
         "churn_validation": churn_metrics,
+        "seasonality": actions.seasonality(orders),
+        "replenish_cycle": {"overall_median_days": overall_cycle,
+                            "brands": {k: float(v) for k, v in b_cycle.sort_values().items()}},
         **extra,
         "churn_definition": f"在观察时点前 {churn.ACTIVE_WINDOW_DAYS} 天内有消费、且之后 {CHURN_HORIZON_DAYS} 天内未再消费",
     }
@@ -150,6 +161,7 @@ def run() -> pd.DataFrame:
     )
     print(f"[5/5] 已写出 members.parquet / model_report.json（耗时 {time.time() - t0:.0f}s）")
     print(members["stage_name"].value_counts().to_string())
+    print(members["action_type"].map(actions.ACTION_NAMES).value_counts().to_string())
     return members
 
 
