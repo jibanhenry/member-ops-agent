@@ -130,7 +130,7 @@ def evaluate(record: dict, orders: pd.DataFrame, snapshot: pd.Timestamp) -> dict
     covered = min(snapshot, end)
     days = (covered - start).days
     if days <= 0:
-        return {"status": "尚无数据", "note": f"活动 {record['start_date']} 开始，数据截至 {snapshot.date()}，跑管线更新数据后再评估"}
+        return {"status": "尚无数据", "note": f"活动 {record['start_date']} 开始，数据截至 {snapshot.date()}，等数据更新后再评估"}
 
     m = pd.DataFrame.from_dict(record["members"], orient="index", columns=["group", "base_amount", "base_purchases", "margin"])
     o = orders[(orders["order_time"] > start) & (orders["order_time"] <= covered) & orders["customer_id"].isin(m.index)]

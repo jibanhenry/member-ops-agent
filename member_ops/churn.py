@@ -79,8 +79,8 @@ def reason_codes(row: pd.Series) -> list[str]:
         drop = 1 - row[f"amount_{t}d"] / row["amount_prev"]
         reasons.append(f"近 {t} 天消费比之前 {t} 天下降 {drop:.0%}")
     if row.get("p_alive", 1) < 0.5:
-        reasons.append(f"购买行为模型估计仍活跃的概率仅 {row['p_alive']:.0%}")
+        reasons.append(f"按以往购买节奏，仍是活跃顾客的可能性仅 {row['p_alive']:.0%}")
     prob = row.get("churn_prob")
     if not reasons and pd.notna(prob) and prob >= 0.5:
-        reasons.append(f"流失模型综合判断 {CONFIG.churn_horizon_days} 天内不再消费的概率为 {prob:.0%}")
+        reasons.append(f"综合消费行为判断，{CONFIG.churn_horizon_days} 天内不再消费的可能性为 {prob:.0%}")
     return reasons

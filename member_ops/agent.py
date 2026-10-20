@@ -199,7 +199,7 @@ class ClaudeBackend:
             history.append({"role": "assistant", "content": response.content})
 
             if response.stop_reason == "refusal":
-                yield {"type": "done", "answer": "这个请求模型无法处理，请换个问法。", "tool_calls": trace, "mode": self.name}
+                yield {"type": "done", "answer": "这个问题暂时答不了，请换个问法试试。", "tool_calls": trace, "mode": self.name}
                 return
             if response.stop_reason != "tool_use":
                 text = "".join(b.text for b in response.content if b.type == "text")
@@ -259,7 +259,7 @@ class MemberOpsAgent:
             yield from self.backend.stream(history)
         except Exception as e:  # 模型服务不可用时退回规则引擎，并撤销本轮半截对话
             del history[checkpoint:]
-            result = offline_answer(self.store, user_message, note=f"大模型调用失败（{type(e).__name__}），已切换到规则引擎。")
+            result = offline_answer(self.store, user_message, note="助手暂时连不上，先给你快速查询的结果。")
             yield {"type": "reset", "reason": "大模型调用失败"}
             yield {"type": "text", "delta": result["answer"]}
             yield {"type": "done", **result}
@@ -291,7 +291,7 @@ def offline_answer(store: MemberStore, message: str, note: str | None = None) ->
     """未配置 LLM 时按关键词路由到工具，用模板生成回答。"""
     cur = store.currency
     calls = []
-    lines = [f"> {note or '当前没有可用的大模型（启动 Ollama 本地模型即可启用对话式分析），以下为规则引擎结果。'}", ""]
+    lines = [f"> {note or '助手目前只能做快速查询，以下是查询结果。'}", ""]
 
     # 会员卡号格式因数据集而异（数字或十六进制串），直接拿消息里的词去会员表里查
     cid = next((t for t in re.findall(r"[0-9A-Za-z]{3,16}", message) if t in store.members.index), None)
@@ -315,7 +315,7 @@ def offline_answer(store: MemberStore, message: str, note: str | None = None) ->
         calls += [{"tool": "find_members", "input": {"stage": "at_risk", "value_tier": "high"}},
                   {"tool": "get_strategy", "input": {"stage": "at_risk", "value_tier": "high"}}]
         lines += [f"### 高价值衰退预警会员：{f['matched']} 人，风险金额 {_fmt_money(f['matched_value_at_risk'], cur)}"]
-        lines += [f"- 会员 {m['customer_id']}：{m['churn_reasons'] or '综合模型判断'}" for m in f["members"]]
+        lines += [f"- 会员 {m['customer_id']}：{m['churn_reasons'] or '综合消费行为判断'}" for m in f["members"]]
         s = g["strategy"]
         lines += ["", f"**建议策略：{s['name']}**"] + [f"- {a}" for a in s["actions"]] + [f"- 频控：{s['guardrail']}"]
         return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
@@ -390,11 +390,10 @@ def offline_answer(store: MemberStore, message: str, note: str | None = None) ->
         r = run_tool(store, "get_model_report", {})
         calls.append({"tool": "get_model_report", "input": {}})
         bt, cv = r["clv_backtest"], r["churn_validation"]
-        lines += ["### 模型可信度",
-                  f"- 付费预测回测：未来 90 天购买 预测 {bt['pred_total_purchases']:.0f} / 实际 {bt['actual_total_purchases']} 次；"
+        lines += ["### 预测靠谱吗",
+                  f"- 消费预测回看：之后 90 天购买 预测 {bt['pred_total_purchases']:.0f} / 实际 {bt['actual_total_purchases']} 次；"
                   f"收入 预测 {_fmt_money(bt['pred_total_revenue'], cur)} / 实际 {_fmt_money(bt['actual_total_revenue'], cur)}",
-                  f"- 流失模型：AUC {cv['auc']}，风险最高 10% 会员中实际流失 {cv['top10_precision']:.0%}（整体 {cv['churn_rate']:.0%}）",
-                  f"- 数据：{r['dataset']['name']}（{r['dataset']['license']}）"]
+                  f"- 流失预警：判定风险最高的 10% 会员里 {cv['top10_precision']:.0%} 后来确实流失（整体 {cv['churn_rate']:.0%}）"]
         return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
 
     o = run_tool(store, "get_overview", {})
@@ -405,5 +404,5 @@ def offline_answer(store: MemberStore, message: str, note: str | None = None) ->
               "", "| 阶段 | 人数 | 人数占比 | 收入占比 |", "|---|---|---|---|"]
     lines += [f"| {s['stage_name']} | {s['members']} | {s['member_share']:.0%} | {s['revenue_share']:.0%} |" for s in o["by_stage"]]
     example = store.members[store.members["stage"] == "at_risk"]["value_at_risk"].idxmax()
-    lines += ["", f"可以试试问：“哪些高价值会员有流失风险？”、“会员 {example} 的情况”、“模型准不准？”"]
+    lines += ["", f"可以试试问：“哪些高价值会员有流失风险？”、“会员 {example} 的情况”、“预测靠谱吗？”"]
     return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}

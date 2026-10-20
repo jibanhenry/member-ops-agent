@@ -495,7 +495,7 @@ TOOL_LABELS = {
     "list_campaigns": "查看活动与对照实验",
     "evaluate_campaign": "评估活动增量效果",
     "get_action_plan": "查看本周行动计划",
-    "get_model_report": "查看模型可信度",
+    "get_model_report": "核对预测准确度",
 }
 
 _STAGES = list(load_playbook()["stage_names"])
