@@ -69,8 +69,10 @@ def segments(dimension: str = "stage"):
 
 @app.get("/api/members")
 def members(stage: str | None = None, value_tier: str | None = None, action_type: str | None = None,
+            incentive_group: str | None = None, shortfall: bool | None = None,
             sort_by: str = "value_at_risk", limit: int = 20):
-    return _tool("find_members", stage=stage, value_tier=value_tier, action_type=action_type, sort_by=sort_by, limit=limit)
+    return _tool("find_members", stage=stage, value_tier=value_tier, action_type=action_type,
+                 incentive_group=incentive_group, shortfall=shortfall, sort_by=sort_by, limit=limit)
 
 
 @app.get("/api/members/{customer_id}")
@@ -86,6 +88,69 @@ def strategy(stage: str, value_tier: str):
 @app.get("/api/action-plan")
 def action_plan():
     return _tool("get_action_plan")
+
+
+@app.get("/api/budget-plan")
+def budget_plan():
+    return _tool("get_budget_plan")
+
+
+@app.get("/api/value-portrait")
+def value_portrait():
+    return _tool("get_value_portrait")
+
+
+class CampaignRequest(BaseModel):
+    name: str
+    stage: str
+    value_tier: str
+    action: str
+    cost_per_member: float
+    incentive_type: str = "gift"
+    redemption_rate: float = 0.3
+    incentive_group: str | None = None
+    window_days: int = 90
+    holdout_pct: float = 0.1
+
+
+@app.get("/api/campaigns")
+def list_campaigns():
+    return _tool("list_campaigns")
+
+
+@app.post("/api/campaigns")
+def create_campaign(req: CampaignRequest):
+    try:
+        return store.create_campaign(**req.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/campaigns/demo")
+def demo_campaign():
+    """在付费预期检查点回放一个没有真实执行的活动，检验评估方法（两组差距应接近 0）。"""
+    cp = store.report.get("expectation", {}).get("checkpoint_date")
+    if not cp:
+        raise HTTPException(status_code=400, detail="管线没有生成付费预期检查点，无法回放")
+    try:
+        rec = store.create_campaign("回放演示：高价值衰退预警导购回访", "at_risk", "high", "导购回访 + 到柜护理体验",
+                                    300, "experience", 0.4, window_days=store.report["expectation"]["days"], start_date=cp)
+        return store.evaluate_campaign(rec["id"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/campaigns/{campaign_id}/evaluate")
+def evaluate_campaign(campaign_id: str):
+    return _tool("evaluate_campaign", campaign_id=campaign_id)
+
+
+@app.delete("/api/campaigns/{campaign_id}")
+def delete_campaign(campaign_id: str):
+    try:
+        return store.delete_campaign(campaign_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get("/api/model-report")

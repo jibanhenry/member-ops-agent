@@ -90,13 +90,29 @@ table { border-collapse: collapse; width: 100%; }
 .muted { color: var(--text-muted); }
 .tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 99px; background: var(--surface-2); color: var(--text-secondary); margin-left: 4px; white-space: nowrap; }
 .plan { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
-.plan .note { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
-.plan .note p { margin: 2px 0; }
+.note { font-size: 12px; color: var(--text-secondary); margin: 0 0 8px; }
+.plan .note { margin-top: 8px; }
+.note p { margin: 2px 0; }
 .events { list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
 .events li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border); }
 .season { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; align-items: end; height: 70px; }
 .season div { background: var(--series-1); border-radius: 3px 3px 0 0; min-height: 2px; }
 .season-x { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 2px; }
+.camp-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; background: var(--surface-2);
+  border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 12px; }
+.camp-form label { display: flex; flex-direction: column; gap: 3px; color: var(--text-secondary); }
+.camp-form input, .camp-form select { font: inherit; font-size: 13px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface-1); color: var(--text-primary); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.btn { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); border-radius: 6px; padding: 5px 12px;
+  font: inherit; font-size: 13px; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: wait; }
+.camp-detail { background: var(--surface-2); border-radius: 8px; padding: 12px 14px; margin-top: 10px; font-size: 13px; }
+.camp-detail table { margin: 6px 0; }
+.portrait { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.sub-h { font-size: 12px; color: var(--text-muted); margin: 0 0 4px; }
+.num { text-align: right; }
 .strategy .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 12px; margin-top: 6px; }
 .model { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px; }
 .model b { font-variant-numeric: tabular-nums; }
@@ -155,7 +171,7 @@ form button:disabled { opacity: .5; cursor: wait; }
 @media (max-width: 600px) {
   header, .layout { padding-left: 16px; padding-right: 16px; }
   .bars { grid-template-columns: 60px minmax(0, 1fr) 110px; }
-  .model, .plan { grid-template-columns: minmax(0, 1fr); }
+  .model, .plan, .portrait { grid-template-columns: minmax(0, 1fr); }
   .matrix-wrap { overflow-x: auto; }
 }
 </style>
@@ -177,6 +193,42 @@ form button:disabled { opacity: .5; cursor: wait; }
         <div><table class="list" id="plan-actions"></table><div class="note" id="plan-note"></div></div>
         <div><div class="muted" style="font-size:12px;margin-bottom:4px">近期大促档期</div><ul class="events" id="plan-events"></ul>
           <div class="muted" style="font-size:12px;margin-bottom:4px">各月收入占比</div><div class="season" id="season"></div><div class="season-x" id="season-x"></div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>预算与用户 ROI <small>用户 ROI =（预测一年消费 × 实际毛利率 − 运营成本）÷ 运营成本；运营成本 = 固定成本 + 动作投入 + 权益</small></h2>
+      <div class="note" id="budget-note"></div>
+      <div class="matrix-wrap"><table class="list" id="budget-rows"></table></div>
+    </section>
+
+    <section class="card">
+      <h2>活动与对照实验 <small>上线时随机留对照组（活动期间不触达），结束后对比两组"实际 − 预测"的差距，算出这笔钱带来的额外消费</small></h2>
+      <div class="btns"><button class="btn primary" id="camp-new">新建活动</button><button class="btn" id="camp-demo">回放一个演示活动</button></div>
+      <form class="camp-form" id="camp-form" hidden>
+        <label>活动名称<input name="name" required value="单次客第二单激活"></label>
+        <label>目标人群<select name="segment" id="camp-segment"></select></label>
+        <label>权益分组<select name="incentive_group"><option value="">全部</option><option value="no_price_cut">高价值·不降价</option>
+          <option value="deal_hunter">羊毛党</option><option value="price_sensitive">价格敏感</option><option value="regular">非价格敏感</option></select></label>
+        <label>动作<input name="action" required value="补货提醒 + 积分兑换小样"></label>
+        <label>权益类型<select name="incentive_type"><option value="gift">赠品/小样（按成本价）</option><option value="price_cut">满减折扣（按面额）</option>
+          <option value="experience">体验服务</option></select></label>
+        <label>单人权益（元）<input name="cost_per_member" type="number" min="0" value="100"></label>
+        <label>预计核销率<input name="redemption_rate" type="number" min="0" max="1" step="0.01" value="0.3"></label>
+        <label>对照组比例<input name="holdout_pct" type="number" min="0.02" max="0.5" step="0.01" value="0.2"></label>
+        <label>观察天数<input name="window_days" type="number" min="7" value="90"></label>
+        <label>&nbsp;<button class="btn primary" type="submit">登记并分组</button></label>
+      </form>
+      <div class="matrix-wrap"><table class="list" id="camp-rows"></table></div>
+      <div id="camp-detail"></div>
+    </section>
+
+    <section class="card">
+      <h2>高价值会员画像 <small>TGI = 高价值会员中的占比 ÷ 全体占比 × 100；拉新来源按首单在一年以前的会员统计</small></h2>
+      <div class="portrait">
+        <div><div class="sub-h">高价值会员明显集中的特征</div><table class="list" id="portrait-tgi"></table></div>
+        <div><div class="sub-h" id="acq-note">拉新来源质量</div><table class="list" id="acq-amount"></table>
+          <div class="sub-h" style="margin-top:10px">按首单品牌（首年人均消费前 8）</div><table class="list" id="acq-brand"></table></div>
       </div>
     </section>
 
@@ -245,8 +297,8 @@ function bindTip(el, html) {
 
 // ---------- 看板 ----------
 async function loadDashboard() {
-  const [status, ov, mx, rep, plan] = await Promise.all([api("/api/status"), api("/api/overview"), api("/api/matrix"),
-    api("/api/model-report"), api("/api/action-plan")]);
+  const [status, ov, mx, rep, plan, budget, portrait, camps] = await Promise.all([api("/api/status"), api("/api/overview"), api("/api/matrix"),
+    api("/api/model-report"), api("/api/action-plan"), api("/api/budget-plan"), api("/api/value-portrait"), api("/api/campaigns")]);
   CUR = ov.currency;
   STAGE_ORDER = Object.keys(mx.stages);
   const ds = status.dataset;
@@ -260,6 +312,8 @@ async function loadDashboard() {
     ["预测未来 90 天收入", moneyShort(ov.pred_revenue_next_90d), "BG/NBD × Gamma-Gamma"],
     ["流失风险金额", moneyShort(ov.total_value_at_risk), "流失概率 × 年消费"],
     ["高风险会员", ov.high_risk_members.toLocaleString(), `${ov.churn_horizon_days} 天流失概率 ≥ ${pct(ov.high_risk_threshold)}`],
+    ["整体用户 ROI", budget.overall_roi == null ? "—" : `${budget.overall_roi.toFixed(1)} 倍`, `运营成本 ${moneyShort(budget.total_cost)}`],
+    ["付费未达预期", (ov.shortfall_members || 0).toLocaleString(), "检查点以来实际消费明显少于预测"],
   ];
   $("#kpis").innerHTML = kpis.map(([l, v, s]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`).join("");
 
@@ -278,6 +332,11 @@ async function loadDashboard() {
   });
 
   renderPlan(plan);
+  renderBudget(budget);
+  renderPortrait(portrait);
+  $("#camp-segment").innerHTML = mx.cells.filter(c => c.stage !== "lost").map(c =>
+    `<option value="${esc(c.stage)}|${esc(c.value_tier)}">${esc(mx.stages[c.stage])} · ${esc(mx.tiers[c.value_tier])}（${c.members}）</option>`).join("");
+  renderCampaigns(camps.campaigns);
   renderMatrix(mx);
   renderModel(rep);
   renderMemberValue(ov.member_vs_nonmember);
@@ -335,6 +394,86 @@ function renderPlan(a) {
   $("#season-x").innerHTML = months.map(m => `<span>${m}</span>`).join("");
 }
 
+const roiText = v => v == null ? "—" : `${v.toFixed(1)} 倍`;
+
+function renderBudget(b) {
+  $("#budget-note").innerHTML = `<p>一年运营成本 <b>${moneyShort(b.total_cost)}</b>，会员预测毛利 <b>${moneyShort(b.total_pred_gross_profit)}</b>，整体 ROI <b>${roiText(b.overall_roi)}</b>。
+    高价值会员占成本 ${pct(b.high_value_cost_share)}、占预测毛利 ${pct(b.high_value_profit_share)}。</p>
+    <p>羊毛党 ${b.deal_hunters.toLocaleString()} 人，其中 <b>${b.deal_hunters_no_coupon.toLocaleString()}</b> 人毛利抵不过发券成本，不发券；
+    用户 ROI 为负的会员 ${b.negative_roi_members.toLocaleString()} 人。</p>`;
+  $("#budget-rows").innerHTML = `<tr><th>人群</th><th class="num">人数</th><th class="num">人均成本</th><th class="num">预测毛利</th><th class="num">用户 ROI</th><th>实测增量 ROI</th><th>建议</th></tr>` +
+    b.rows.map(r => `<tr class="click" data-stage="${esc(r.stage)}" data-tier="${esc(r.value_tier)}"><td>${esc(r.segment)}</td>
+      <td class="num">${r.members.toLocaleString()}</td><td class="num">${money(r.cost_per_member)}</td><td class="num">${moneyShort(r.pred_gross_profit)}</td>
+      <td class="num">${roiText(r.roi)}</td>
+      <td class="reasons">${r.measured ? `${roiText(r.measured.incremental_roi)}${r.measured.significant ? "" : "（不显著）"}` : "待验证"}</td>
+      <td class="reasons">${esc(r.advice)}${r.deal_hunters_no_coupon ? `；羊毛党 ${r.deal_hunters_no_coupon} 人不发券` : ""}</td></tr>`).join("");
+  $("#budget-rows").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => loadSegment(r.dataset.stage, r.dataset.tier)));
+}
+
+function renderCampaigns(list) {
+  $("#camp-rows").innerHTML = list.length ? `<tr><th>活动</th><th>人群</th><th>周期</th><th class="num">实验/对照</th><th class="num">可测最小提升</th><th class="num">每人额外消费</th><th class="num">增量 ROI</th><th>结论</th><th></th></tr>` +
+    list.map(c => { const r = c.result || {}, d = c.design;
+      return `<tr class="click" data-id="${esc(c.id)}"><td>${esc(c.name)}${c.mode === "replay" ? `<span class="tag">回放演示</span>` : ""}</td>
+        <td>${esc(c.stage_name || c.stage)} · ${esc(c.tier_name || c.value_tier)}</td><td class="reasons">${esc(c.start_date)} ~ ${esc(c.end_date)}</td>
+        <td class="num">${d.treat_members.toLocaleString()} / ${d.control_members.toLocaleString()}</td><td class="num">${pct(d.detectable_lift)}</td>
+        <td class="num">${r.incremental_per_member == null ? "—" : money(r.incremental_per_member)}</td><td class="num">${roiText(r.incremental_roi)}${r.verdict && !r.significant ? `<br><span class="muted">不显著</span>` : ""}</td>
+        <td class="reasons">${esc(r.verdict || "未评估")}</td>
+        <td><button class="btn" data-eval="${esc(c.id)}">评估</button> <button class="btn" data-del="${esc(c.id)}">删除</button></td></tr>`; }).join("")
+    : `<tr><td class="muted">还没有活动。新建活动会自动按风险金额分层随机留出对照组；也可以先回放一个演示活动看看评估流程。</td></tr>`;
+  $("#camp-rows").querySelectorAll("button[data-eval]").forEach(b => b.onclick = async e => { e.stopPropagation(); b.disabled = true;
+    try { showCampaign(await api(`/api/campaigns/${b.dataset.eval}/evaluate`, {method: "POST"})); await refreshCampaigns(); } catch (err) { alert(err.message); } b.disabled = false; });
+  $("#camp-rows").querySelectorAll("button[data-del]").forEach(b => b.onclick = async e => { e.stopPropagation();
+    if (!confirm("删除这个活动？对照组会员会恢复正常触达。")) return;
+    await api(`/api/campaigns/${b.dataset.del}`, {method: "DELETE"}); $("#camp-detail").innerHTML = ""; await refreshCampaigns(); });
+  $("#camp-rows").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => showCampaign(list.find(c => c.id === r.dataset.id))));
+}
+
+async function refreshCampaigns() {
+  const [camps, budget, plan] = await Promise.all([api("/api/campaigns"), api("/api/budget-plan"), api("/api/action-plan")]);
+  renderCampaigns(camps.campaigns); renderBudget(budget); renderPlan(plan);
+}
+
+function showCampaign(c) {
+  const d = c.design, r = c.result;
+  const bal = Object.entries(d.balance).map(([k, v]) => `${esc(k)} ${/概率/.test(k) ? pct(v.treat) : money(v.treat)} / ${/概率/.test(k) ? pct(v.control) : money(v.control)}`).join("；");
+  let html = `<b>${esc(c.name)}</b>：${esc(c.action)}，单人增量成本 ${money(c.unit_cost)}（动作投入 + 权益 × 核销率）<br>
+    <span class="muted">分组均衡检查（实验组 / 对照组）：${bal}。以这个样本量能可靠测出的最小消费提升约 ${pct(d.detectable_lift)}；
+    想测出 5% 的提升，每组需要约 ${(d.per_group_for_5pct || 0).toLocaleString()} 人。${d.excluded_in_other_campaigns ? `已排除 ${d.excluded_in_other_campaigns} 位在其他进行中活动里的会员。` : ""}</span>`;
+  if (r && r.treat) {
+    const row = (n, x) => `<tr><td>${n}</td><td class="num">${x.members.toLocaleString()}</td><td class="num">${money(x.baseline_per_member)}</td>
+      <td class="num">${money(x.actual_per_member)}</td><td class="num">${money(x.gap_per_member)}</td><td class="num">${pct(x.purchase_rate)}</td></tr>`;
+    html += `<table class="list"><tr><th></th><th class="num">人数</th><th class="num">预测消费/人</th><th class="num">实际消费/人</th><th class="num">实际 − 预测</th><th class="num">到柜率</th></tr>
+      ${row("实验组", r.treat)}${row("对照组", r.control)}</table>
+      每人额外消费 <b>${money(r.incremental_per_member)}</b>（95% 区间 ${money(r.ci95[0])} ~ ${money(r.ci95[1])}，${r.significant ? "显著" : "不显著"}，p=${r.p_value.toFixed(2)}）；
+      增量毛利 ${money(r.incremental_gross_profit)}，增量成本 ${money(r.incremental_cost)}，增量 ROI <b>${roiText(r.incremental_roi)}</b>${r.significant ? "" : "（不显著，只是点估计，不能作为依据）"}。<br><b>结论：</b>${esc(r.verdict)}
+      ${r.note ? `<div class="muted" style="margin-top:6px">${esc(r.note)}</div>` : ""}`;
+  } else html += `<div class="muted" style="margin-top:6px">${esc(r?.note || "还没有评估：活动结束、跑管线更新数据后点「评估」。")}</div>`;
+  $("#camp-detail").innerHTML = `<div class="camp-detail">${html}</div>`;
+}
+
+$("#camp-new").onclick = () => { $("#camp-form").hidden = !$("#camp-form").hidden; };
+$("#camp-demo").onclick = async () => { $("#camp-demo").disabled = true;
+  try { showCampaign(await api("/api/campaigns/demo", {method: "POST"})); await refreshCampaigns(); } catch (e) { alert(e.message); }
+  $("#camp-demo").disabled = false; };
+$("#camp-form").onsubmit = async e => { e.preventDefault();
+  const f = Object.fromEntries(new FormData(e.target)); const [stage, value_tier] = f.segment.split("|");
+  const body = {name: f.name, stage, value_tier, action: f.action, incentive_type: f.incentive_type, incentive_group: f.incentive_group || null,
+    cost_per_member: +f.cost_per_member, redemption_rate: +f.redemption_rate, holdout_pct: +f.holdout_pct, window_days: +f.window_days};
+  try { const c = await api("/api/campaigns", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    $("#camp-form").hidden = true; showCampaign(c); await refreshCampaigns(); } catch (err) { alert(err.message); } };
+
+function renderPortrait(v) {
+  const p = v.portrait || {over_index: []}, acq = v.acquisition || {};
+  $("#portrait-tgi").innerHTML = `<tr><th>维度</th><th>特征</th><th class="num">高价值占比</th><th class="num">TGI</th></tr>` +
+    p.over_index.map(x => `<tr><td>${esc(x.dimension)}</td><td>${esc(x.value)}</td><td class="num">${pct(x.high_share)}</td><td class="num">${Math.round(x.tgi)}</td></tr>`).join("");
+  const acqRows = rows => `<tr><th>来源</th><th class="num">人数</th><th class="num">首年人均消费</th><th class="num">现为高价值</th><th class="num">羊毛党</th></tr>` +
+    rows.map(x => `<tr><td>${esc(x.group)}</td><td class="num">${x.members.toLocaleString()}</td><td class="num">${money(x.first_year_spend)}</td>
+      <td class="num">${pct(x.high_share)}</td><td class="num">${pct(x.deal_hunter_share)}</td></tr>`).join("");
+  $("#acq-note").textContent = `拉新来源质量：按首单金额段（${acq.cohort_note || ""}，整体首年人均 ${money(acq.overall?.first_year_spend)}）`;
+  $("#acq-amount").innerHTML = acqRows(acq.by_first_amount || []);
+  $("#acq-brand").innerHTML = acqRows((acq.by_first_brand || []).slice(0, 8));
+}
+
 function renderList(list, title, strategyHtml) {
   const box = $("#segment-detail"); box.hidden = false;
   $("#segment-title").innerHTML = title;
@@ -358,11 +497,12 @@ async function loadSegment(stage, tier) {
   const acts = Object.entries(st.next_actions || {}).map(([k, v]) => `${esc(k)} ${v.toLocaleString()}`).join("，");
   const html = s ? `<div class="strategy"><h3>${esc(s.name)}</h3><div class="muted">${esc(s.goal)}</div>
     <ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
-    <div><b>权益：</b>${esc(s.incentive)}${s.incentive_price_sensitive ? `<br><b>价格敏感会员（${(st.price_sensitive_members || 0).toLocaleString()} 人）：</b>${esc(s.incentive_price_sensitive)}` : ""}</div>
+    <div><b>权益：</b>${(st.incentive_groups || []).map(g => `<br>${esc(g.group)}（${g.members.toLocaleString()} 人）：${esc(g.incentive)}`).join("")}</div>
     <div class="meta"><div><b>渠道：</b>${esc(CHANNEL[s.channel] || s.channel || "—")}</div>
       <div><b>单人成本上限：</b>人均 ${money(st.avg_cost_cap_per_member)}（预测年消费 × ${pct(s.cost_cap_pct)}）</div>
       <div><b>KPI：</b>${esc(s.kpi)}</div><div><b>频控：</b>${esc(s.guardrail)}</div></div>
-    ${acts ? `<div class="muted" style="margin-top:6px">下一步安排：${acts}</div>` : ""}</div>` : "";
+    ${acts ? `<div class="muted" style="margin-top:6px">下一步安排：${acts}</div>` : ""}
+    ${st.economics ? `<div class="muted">算账：一年运营成本 ${money(st.economics.real_cost)}，预测毛利 ${moneyShort(st.economics.pred_gross_profit)}，ROI ${roiText(st.economics.roi)}${st.economics.deal_hunters_no_coupon ? `；羊毛党 ${st.economics.deal_hunters_no_coupon} 人不发券` : ""}</div>` : ""}</div>` : "";
   renderList(list, `${esc(st.stage)} · ${esc(st.value_tier)} <small>${st.target_members} 人，风险金额 ${money(st.group_value_at_risk)}，平均流失概率 ${pct(st.group_avg_churn_prob)}</small>`, html);
 }
 
@@ -376,8 +516,8 @@ async function loadActionList(type) {
 async function openMember(id) {
   const p = await api(`/api/members/${encodeURIComponent(id)}`);
   const fmt = (k, v) => v == null || v === "" ? "—" : typeof v === "boolean" ? (v ? "是" : "否") : typeof v !== "number" ? v
-    : /金额|消费$|客单价|收入|成本/.test(k) && !/次数|趋势/.test(k) ? money(v)
-    : /概率|占比|比例/.test(k) ? pct(v) : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(2);
+    : /金额|消费$|客单价|收入|成本|毛利|投入/.test(k) && !/次数|趋势/.test(k) ? money(v)
+    : /概率|占比|比例/.test(k) ? pct(v) : /ROI/.test(k) ? roiText(v) : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(2);
   const kv = obj => `<dl class="kv">${Object.entries(obj).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(fmt(k, v))}</dd>`).join("")}</dl>`;
   const sections = Object.entries(p).filter(([k, v]) => v && typeof v === "object" && !Array.isArray(v) && k !== "推荐策略");
   const s = p["推荐策略"];
@@ -433,7 +573,7 @@ function md(src) {
 }
 
 const SESSION = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
-const SUGGESTIONS = ["会员整体情况怎么样？", "这周导购应该先联系谁？", "哪些高价值会员有流失风险？", "给衰退预警的高价值会员设计一个挽留方案并算算账", "哪些品牌的会员流失风险最高？", "会员和非会员有什么差别？", "模型准不准？"];
+const SUGGESTIONS = ["会员整体情况怎么样？", "这周导购应该先联系谁？", "高价值会员是什么样的，拉新往哪倾斜？", "羊毛党要不要发券？", "活动有没有带来额外消费？", "哪些高价值会员有流失风险？", "给衰退预警的高价值会员设计一个挽留方案并算算账", "模型准不准？"];
 function addMsg(role, html, tools) {
   const d = document.createElement("div"); d.className = `msg ${role}`;
   d.innerHTML = `<div class="bubble">${html}</div>` + (tools?.length ? `<div class="tools">调用：${tools.map(t => esc(t.tool)).join(" → ")}</div>` : "");

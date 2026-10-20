@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
-from . import actions, churn, clv, segments
+from . import actions, churn, clv, economics, insights, segments
 from .data import CONFIG, DATASET_INFO, PROCESSED_DIR, load_dataset
 from .features import build_snapshot, future_labels
 
@@ -39,24 +39,36 @@ def seasonal_factors(orders: pd.DataFrame, cutoff: pd.Timestamp) -> tuple[float,
     )
 
 
+def member_expectation(orders: pd.DataFrame, cal: pd.Timestamp, days: int) -> tuple[pd.DataFrame, pd.DataFrame, float, float]:
+    """在 cal 处拟合付费预测，得到每位会员之后 days 天的预期购买次数/金额（季节校准后）和实际发生。
+    返回 (预期, 未校准预期, 次数系数, 收入系数)。"""
+    snap = build_snapshot(orders, cal)
+    pred, _ = clv.fit_and_score(snap, horizon_days=(days,))
+    actual = future_labels(orders, cal, days).reindex(snap.index).fillna(0)
+    f_buy, f_rev = seasonal_factors(orders, cal)
+    raw = pd.DataFrame({"purchases": pred[f"pred_purchases_{days}d"], "amount": pred[f"pred_clv_{days}d"]})
+    exp = pd.DataFrame({
+        "expected_purchases": raw["purchases"] * f_buy, "expected_amount": raw["amount"] * f_rev,
+        "actual_purchases": actual["future_orders"], "actual_amount": actual["future_amount"],
+    })
+    return exp, raw, f_buy, f_rev
+
+
 def backtest_clv(orders: pd.DataFrame, end: pd.Timestamp) -> dict:
     """在 end-90 天处拟合，预测之后 90 天，与真实发生对比。"""
     cal = end - pd.Timedelta(days=HORIZON_DAYS)
-    snap = build_snapshot(orders, cal)
-    pred, _ = clv.fit_and_score(snap, horizon_days=(HORIZON_DAYS,))
-    actual = future_labels(orders, cal, HORIZON_DAYS).reindex(snap.index).fillna(0)
-    f_buy, f_rev = seasonal_factors(orders, cal)
-    raw_buy = pred[f"pred_purchases_{HORIZON_DAYS}d"]
-    raw_clv = pred[f"pred_clv_{HORIZON_DAYS}d"]
-    p_buy = raw_buy * f_buy
-    p_clv = raw_clv * f_rev
+    exp, raw, f_buy, f_rev = member_expectation(orders, cal, HORIZON_DAYS)
+    snap_index = exp.index
+    raw_buy, raw_clv = raw["purchases"], raw["amount"]
+    p_buy, p_clv = exp["expected_purchases"], exp["expected_amount"]
+    actual = pd.DataFrame({"future_orders": exp["actual_purchases"], "future_amount": exp["actual_amount"]})
     return {
         "calibration_end": str(cal.date()),
         "seasonal_factor_purchases": round(f_buy, 3),
         "seasonal_factor_revenue": round(f_rev, 3),
         "pred_total_purchases_unadjusted": round(float(raw_buy.sum()), 1),
         "pred_total_revenue_unadjusted": round(float(raw_clv.sum()), 0),
-        "n_customers": int(len(snap)),
+        "n_customers": int(len(snap_index)),
         "pred_total_purchases": round(float(p_buy.sum()), 1),
         "actual_total_purchases": int(actual["future_orders"].sum()),
         "purchases_mae": round(float((p_buy - actual["future_orders"]).abs().mean()), 3),
@@ -99,8 +111,12 @@ def run() -> pd.DataFrame:
     print(f"[3/5] 流失模型验证：AUC {churn_metrics['auc']}，Top10% 命中率 {churn_metrics['top10_precision']:.0%}"
           f"（基线流失率 {churn_metrics['churn_rate']:.0%}）")
 
+    pb = segments.load_playbook()
+    eco = economics.econ(pb)
     snap = build_snapshot(orders, end)
-    pred, clv_params = clv.fit_and_score(snap)
+    pred, clv_params = clv.fit_and_score(
+        snap, horizon_days=tuple(sorted({HORIZON_DAYS, *(365 * k for k in range(1, eco["lifetime_years"] + 1))})))
+    pred["pred_ltv"] = economics.lifetime_value(pred, eco["lifetime_years"], eco["annual_discount_rate"])
     f_buy, f_rev = seasonal_factors(orders, end)
     pred[f"pred_purchases_{HORIZON_DAYS}d"] *= f_buy
     pred[f"pred_clv_{HORIZON_DAYS}d"] *= f_rev
@@ -110,7 +126,6 @@ def run() -> pd.DataFrame:
     members["churn_prob"] = pd.Series(churn_model.predict_proba(play[churn_cols])[:, 1], index=play.index)
     print("[4/5] 当前快照打分完成")
 
-    pb = segments.load_playbook()
     members["rfm_segment"] = segments.rfm_segment(members)
     members["value_tier"] = segments.value_tier(members, pb)
     members["value_shift"] = segments.value_shift(members, pb)
@@ -133,9 +148,22 @@ def run() -> pd.DataFrame:
     b_cycle, overall_cycle = actions.brand_cycles(orders, rep["brand_min_pairs"])
     members = members.join(actions.purchase_cycle(members, b_cycle, overall_cycle, end, pb))
     members["price_sensitive"] = actions.price_sensitive(members, pb)
+    members["incentive_group"] = actions.incentive_group(members, pb)
+    members = members.join(insights.first_order_traits(orders))
+
+    # 付费预期跟踪：检查点上预测"到今天应该买几次"，和实际对比
+    cp_days = insights.cfg(pb)["checkpoint_days"]
+    exp, _, _, _ = member_expectation(orders, end - pd.Timedelta(days=cp_days), cp_days)
+    members = members.join(exp.add_suffix("_cp"))
+    members["shortfall"] = insights.shortfall(members, pb)
+    members["shortfall_reasons"] = insights.shortfall_reasons(orders, members, end, pb)
+
     members = members.join(actions.plan_actions(members, end, pb))
+    members = members.join(economics.member_economics(members, pb))
 
     members = members.reset_index()
+    portrait = json.loads(json.dumps(insights.value_portrait(members), default=float))
+    prev_portrait = insights.save_history(PROCESSED_DIR / "portrait_history.json", str(end.date()), portrait)
     members.to_parquet(PROCESSED_DIR / "members.parquet", index=False)
 
     report = {
@@ -150,6 +178,17 @@ def run() -> pd.DataFrame:
         "clv_params": json.loads(json.dumps(clv_params, default=float)),
         "churn_validation": churn_metrics,
         "seasonality": actions.seasonality(orders),
+        "expectation": {
+            "checkpoint_date": str((end - pd.Timedelta(days=cp_days)).date()), "days": cp_days,
+            "tracked_members": int(members["expected_purchases_cp"].notna().sum()),
+            "expected_purchases": float(members["expected_purchases_cp"].sum()),
+            "actual_purchases": float(members["actual_purchases_cp"].sum()),
+            "shortfall_members": int(members["shortfall"].sum()),
+        },
+        "portrait": portrait,
+        "portrait_previous": prev_portrait,
+        "acquisition": json.loads(json.dumps(insights.acquisition_quality(orders, members.set_index("customer_id"), end),
+                                             default=float)),
         "replenish_cycle": {"overall_median_days": overall_cycle,
                             "brands": {k: float(v) for k, v in b_cycle.sort_values().items()}},
         **extra,

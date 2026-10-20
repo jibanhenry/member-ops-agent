@@ -33,6 +33,7 @@ def build_snapshot(orders: pd.DataFrame, cutoff: pd.Timestamp) -> pd.DataFrame:
     # 价格/券敏感度：优惠占原价比例、用券订单占比
     if "discount" in hist.columns:
         snap["discount_rate"] = g["discount"].sum() / (snap["monetary"] + g["discount"].sum())
+        snap["promo_order_share"] = (hist["discount"] > 0).groupby(hist["customer_id"]).mean()
     if "coupon_disc" in hist.columns:
         snap["coupon_order_share"] = g["coupon_disc"].apply(lambda s: (s > 0).mean())
 

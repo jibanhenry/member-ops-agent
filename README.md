@@ -54,11 +54,14 @@ uv run uvicorn app.server:app --port 8000   # 打开 http://localhost:8000
 | `member_ops/clv.py` | 付费预测：BG/NBD × Gamma-Gamma（scipy 实现） |
 | `member_ops/churn.py` | 流失预警：时间切分训练的 GBDT + 可读流失原因 |
 | `member_ops/segments.py` | RFM 八类、价值分层（历史 × 预测）、生命周期、策略匹配 |
+| `member_ops/economics.py` | 算账：用户 ROI =（预测消费 × 实际毛利率 − 运营成本）÷ 运营成本，运营成本 = 固定成本 + 动作投入 + 权益；羊毛党逐人判断是否发券；各人群预算与整体 ROI |
+| `member_ops/campaigns.py` | 活动与对照实验：按风险金额分层随机留对照组，结束后对比两组"实际 − 预测"算出额外消费、置信区间和增量 ROI；记录存于 `data/campaigns.json` |
+| `member_ops/insights.py` | 付费预期跟踪（检查点预测 vs 实际、未达预期原因）、高价值画像 TGI 与历史对比、拉新来源质量 |
 | `member_ops/actions.py` | 行动编排：个人补货节奏、按优惠敏感度选权益、成本上限、导购产能排队、大促档期，给每位会员排一个下一步动作 |
 | `member_ops/pipeline.py` | 端到端管线与回测报告 |
 | `member_ops/tools.py` | Agent 工具层（也供 Web API 复用） |
 | `member_ops/agent.py` | 工具调用循环（Ollama 本地模型 / Claude）+ 离线规则引擎 |
-| `playbook/playbook.yaml` | **运营规则**：生命周期阈值、价值分层、补货节奏、权益规则、触达频控与导购产能、大促日历、阶段×价值 -> 策略 |
+| `playbook/playbook.yaml` | **运营规则**：生命周期阈值、价值分层、补货节奏、权益分组（高价值不降价、羊毛党）、算账口径与成本、付费预期跟踪、触达频控与导购产能、大促日历、阶段×价值 -> 策略与预算 |
 | `playbook/methodology.md` | **运营方法论**：原样进入 Agent 系统提示词 |
 | `app/` | FastAPI 服务与单页看板 |
 

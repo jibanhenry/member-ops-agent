@@ -54,10 +54,14 @@ replenishment:
   brand_min_pairs: 200   # 品牌至少有 N 次同客复购记录才用品牌周期，否则用整体中位数
 
 # ---------- 权益选择 ----------
-# 从不用券的会员发券，钱补贴给了本来就会买的人；只有价格敏感的会员才给让利型权益。
+# 分四组：高价值·不降价 / 羊毛党 / 价格敏感 / 非价格敏感。
+# 从不用券的会员发券，钱补贴给了本来就会买的人；高价值会员用价格减免会伤害利润和身份感；
+# 羊毛党只在发券算得过账（增量毛利 > 真实成本）时才给让利。
 incentive_rules:
   price_sensitive_discount_rate: 0.02  # 历史优惠占原价比例 >= 该值 -> 价格敏感
   price_sensitive_coupon_share: 0.3    # 用券订单占比 >= 该值 -> 价格敏感（数据里有用券记录时）
+  deal_hunter_promo_share: 0.8         # 打折订单占比 >= 该值、且不是高价值 -> 羊毛党
+  no_price_cut_tiers: [high]           # 这些价值层一律不做价格减免，哪怕用过券，只给体验、身份、优先权
 
 # ---------- 触达编排 ----------
 # 每位会员同一时间只执行一个"下一步动作"；人工回访是稀缺资源，按风险金额排队。
@@ -68,6 +72,37 @@ contact_policy:
   manual_max_weeks: 4           # 人工回访最多排 N 周，排不进去的转自动触达
   manual_stage_priority: [at_risk, one_time, growing, dormant]  # 人工排队先按阶段：衰退预警最先，越早拦截越划算；同阶段按风险金额
   promo_quiet_days: 14          # 大促开始前 N 天内，自动挽留/唤醒并入大促统一推送，不单独让利
+
+# ---------- 算账口径 ----------
+# 用户 ROI =（会员预测消费 × 实际毛利率 − 花在他身上的真实运营成本）÷ 真实运营成本
+# 实际毛利率按会员自己的折扣率折算：1 − (1 − 标价毛利率) / (1 − 折扣率)，常打折的会员毛利更低。
+# 真实运营成本 = 固定成本 + 针对这个人的动作投入（按下一步动作计价）+ 例行触达 + 权益（让利按面额全额、赠品按成本价）。
+# 以下为示例值，请按实际填写。
+economics:
+  gross_margin: 0.30          # 标价毛利率（联营专柜按商场实际扣点后的毛利填写）
+  gift_cost_ratio: 0.4        # 赠品/小样/体验的成本价 ÷ 标价
+  fixed_cost_per_member: 20   # 固定成本：每位会员每年分摊的会员系统、积分、客服等费用（元）
+  action_cost:                # 针对这个人的动作投入：下一步动作按类型计价（元/次）
+    manual: 30                # 导购人工回访（电话或企业微信，按人力成本）
+    manual_queue: 30
+    shortfall: 5              # 未达预期定向触达（定制内容 + 导购企业微信跟进）
+    replenish: 0.5            # 补货提醒（短信或企业微信消息）
+    auto: 0.5                 # 自动触达
+    promo_merge: 0.2          # 并入大促统一推送，分摊成本
+    promo_only: 0.2
+    wait: 0                   # 暂不打扰
+  routine_touch_cost: 0.5     # 策略里一年例行触达的单次成本（次数见各策略 budget.touches）
+  return_basis: 365d          # 回报看哪段预测消费：365d=未来一年（与一年运营成本同口径）；lifetime=未来 N 年折现
+  lifetime_years: 3           # 生命周期价值看未来 N 年（付费预测模型给出，按年折现）
+  annual_discount_rate: 0.10
+
+# ---------- 付费预期跟踪 ----------
+# 在检查点（N 天前）用付费预测模型算出每人"到今天应该买几次"，实际明显不够的标为"未达预期"，
+# 分析原因并优先定向触达。
+expectation:
+  checkpoint_days: 90
+  min_expected_purchases: 0.8 # 预期次数不到该值的会员本来就不常来，不做判断
+  shortfall_ratio: 0.5        # 实际次数 < 预期 × 该值 -> 未达预期
 
 # ---------- 大促日历（月-日） ----------
 # 用来安排触达时机，请替换成本商场的实际档期（春节等农历节日按当年日期调整）。
@@ -84,7 +119,10 @@ calendar:
 # tier: high / mid / low / any。匹配时优先精确 tier，其次 any。
 # channel: manual=导购人工（受产能约束）/ auto=自动触达 / promo_only=只在大促触达
 # cost_cap_pct: 单人权益成本上限 = 预测未来一年消费 × 该比例
-# incentive 是默认权益（给不价格敏感的会员），incentive_price_sensitive 给价格敏感的会员
+# incentive 是默认权益（给非价格敏感和高价值会员），incentive_price_sensitive 给价格敏感的会员，
+#   incentive_deal_hunter 给羊毛党（不写则默认"只给算得过账的有门槛权益，回不了本就不发"）
+# budget 是一年内花在每位会员身上的运营投入（示例值）：gift_value 默认权益标价（按成本价折算），
+#   price_cut_value 让利面额（只给价格敏感和羊毛党，按面额全额计），redemption_rate 核销率，touches 一年例行触达次数
 strategies:
   - stage: new
     tier: any
@@ -101,6 +139,7 @@ strategies:
     incentive_price_sensitive: 第二单满赠，30 天内有效
     kpi: 入会 90 天内二次购买率
     guardrail: 90 天内最多主动触达 4 次；已复购即转入成长期节奏
+    budget: {gift_value: 150, price_cut_value: 100, redemption_rate: 0.4, touches: 4}
 
   - stage: one_time
     tier: high
@@ -116,6 +155,7 @@ strategies:
     incentive_price_sensitive: 第二单满赠或积分加倍，限 30 天内使用
     kpi: 60 天内二次到柜率
     guardrail: 人工回访只做一次；30 天内最多触达 2 次
+    budget: {gift_value: 300, price_cut_value: 200, redemption_rate: 0.4, touches: 2}
 
   - stage: one_time
     tier: any
@@ -131,6 +171,7 @@ strategies:
     incentive_price_sensitive: 第二单满减，限 30 天内使用
     kpi: 90 天内二次到柜率
     guardrail: 30 天内最多触达 2 次；仍无响应的转入大促节点统一触达
+    budget: {gift_value: 100, price_cut_value: 80, redemption_rate: 0.25, touches: 2}
 
   - stage: growing
     tier: high
@@ -145,6 +186,7 @@ strategies:
     incentive: 会员等级/积分加速，突出身份感
     kpi: 180 天内消费次数、跨品牌购买数
     guardrail: 不用大额折扣拉升，避免养成只在大促时购买
+    budget: {gift_value: 300, price_cut_value: 0, redemption_rate: 0.5, touches: 2}
 
   - stage: growing
     tier: any
@@ -159,6 +201,7 @@ strategies:
     incentive_price_sensitive: 积分加倍日、满额赠小样
     kpi: 复购间隔是否缩短
     guardrail: 同一会员每月最多 2 次营销触达；不在补货窗口内不打扰
+    budget: {gift_value: 100, price_cut_value: 80, redemption_rate: 0.3, touches: 2}
 
   - stage: mature
     tier: high
@@ -173,6 +216,7 @@ strategies:
     incentive: 非金钱权益优先（身份、体验、优先权）
     kpi: 年度留存率、年消费额、跨品牌数
     guardrail: 不发大额通用券，避免利润侵蚀
+    budget: {gift_value: 500, price_cut_value: 0, redemption_rate: 0.6, touches: 2}
 
   - stage: mature
     tier: any
@@ -187,6 +231,7 @@ strategies:
     incentive_price_sensitive: 跨品牌满减、积分兑换
     kpi: 连带率、购买品牌数、客单价
     guardrail: 推荐要与历史偏好相关，避免无差别群发
+    budget: {gift_value: 150, price_cut_value: 150, redemption_rate: 0.3, touches: 2}
 
   - stage: at_risk
     tier: high
@@ -202,6 +247,7 @@ strategies:
     incentive_price_sensitive: 定向礼遇 + 到柜满赠
     kpi: 60 天内回柜率、挽留 ROI
     guardrail: 人工优先于群发；同一会员一个周期内只做一次大额挽留
+    budget: {gift_value: 800, price_cut_value: 0, redemption_rate: 0.5, touches: 2}
 
   - stage: at_risk
     tier: any
@@ -216,6 +262,7 @@ strategies:
     incentive_price_sensitive: 积分加倍、满赠
     kpi: 30 天内回柜率
     guardrail: 低价值人群控制成本，优先用积分和内容；临近大促的并入大促推送
+    budget: {gift_value: 100, price_cut_value: 100, redemption_rate: 0.25, touches: 2}
 
   - stage: dormant
     tier: high
@@ -231,6 +278,7 @@ strategies:
     incentive_price_sensitive: 回归礼 + 到柜满减
     kpi: 90 天召回率
     guardrail: 召回失败的不再追加投入，转入低频内容触达
+    budget: {gift_value: 500, price_cut_value: 300, redemption_rate: 0.3, touches: 2}
 
   - stage: dormant
     tier: any
@@ -245,6 +293,7 @@ strategies:
     incentive_price_sensitive: 积分兑换、通用满减
     kpi: 触达响应率、召回率
     guardrail: 控制频率，避免被投诉为骚扰
+    budget: {gift_value: 50, price_cut_value: 100, redemption_rate: 0.1, touches: 1}
 
   - stage: lost
     tier: any
@@ -258,3 +307,4 @@ strategies:
     incentive: 无或极低
     kpi: 流失原因归因覆盖率
     guardrail: 不对流失会员做高成本投放
+    budget: {gift_value: 0, price_cut_value: 0, redemption_rate: 0, touches: 1}

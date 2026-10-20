@@ -1,10 +1,10 @@
 """行动编排：把"这类人用什么策略"细化成"这个人下一步做什么、什么时候做、给什么权益、最多花多少钱"。
 
 - 补货节奏：消费天数够多用会员自己的平均间隔，否则用主力品牌的同客复购间隔中位数
-- 权益选择：按优惠敏感度区分，不给本来就不用券的人发券
+- 权益选择：高价值会员不做价格减免；羊毛党只在算得过账时才给让利；其余按优惠敏感度区分
 - 成本上限：锚定预测未来一年消费，而不是历史消费
 - 触达编排：每人同一时间只有一个下一步动作；人工回访受导购产能约束、按风险金额排队；
-  临近大促的自动触达并入大促统一推送
+  付费没达到预期的会员优先定向触达；临近大促的自动触达并入大促统一推送
 规则全部来自 playbook.yaml，缺省时用 DEFAULTS。
 """
 
@@ -18,7 +18,8 @@ from .segments import match_strategy
 DEFAULTS = {
     "replenishment": {"personal_min_days": 3, "remind_at": 0.75, "window_days": 14,
                       "min_cycle_days": 14, "max_cycle_days": 180, "brand_min_pairs": 200},
-    "incentive_rules": {"price_sensitive_discount_rate": 0.02, "price_sensitive_coupon_share": 0.3},
+    "incentive_rules": {"price_sensitive_discount_rate": 0.02, "price_sensitive_coupon_share": 0.3,
+                        "deal_hunter_promo_share": 0.8, "no_price_cut_tiers": ["high"]},
     "contact_policy": {"max_touches_per_week": 1, "max_touches_per_month": 3, "manual_capacity_per_week": 300,
                        "manual_max_weeks": 4, "promo_quiet_days": 14,
                        "manual_stage_priority": ["at_risk", "one_time", "growing", "dormant"]},
@@ -27,11 +28,13 @@ DEFAULTS = {
 ACTION_NAMES = {
     "manual": "本周人工回访",
     "manual_queue": "排队等人工回访",
+    "shortfall": "未达预期定向触达",
     "replenish": "补货提醒",
     "promo_merge": "并入大促推送",
     "auto": "自动触达",
     "wait": "暂不打扰",
     "promo_only": "仅大促触达",
+    "holdout": "对照组·不触达",
 }
 
 # 补货窗口只对还在消费周期里的会员有意义
@@ -90,10 +93,27 @@ def price_sensitive(m: pd.DataFrame, pb: dict) -> pd.Series:
     return s
 
 
-def pick_incentive(strategy: dict | None, sensitive: bool) -> str | None:
+INCENTIVE_GROUPS = {"no_price_cut": "高价值·不降价", "deal_hunter": "羊毛党", "price_sensitive": "价格敏感", "regular": "非价格敏感"}
+
+
+def incentive_group(m: pd.DataFrame, pb: dict) -> pd.Series:
+    """高价值层一律不降价；不是高价值、且几乎只在打折时购买的是羊毛党；其余按优惠敏感度区分。"""
+    c = cfg(pb, "incentive_rules")
+    no_cut = m["value_tier"].isin(c["no_price_cut_tiers"])
+    promo = m["promo_order_share"].fillna(0) if "promo_order_share" in m.columns else pd.Series(0.0, index=m.index)
+    deal = promo >= c["deal_hunter_promo_share"]
+    return pd.Series(np.select([no_cut, deal, price_sensitive(m, pb)], ["no_price_cut", "deal_hunter", "price_sensitive"],
+                               "regular"), index=m.index)
+
+
+def pick_incentive(strategy: dict | None, group: str) -> str | None:
     if not strategy:
         return None
-    return (strategy.get("incentive_price_sensitive") if sensitive else None) or strategy.get("incentive")
+    if group == "deal_hunter":
+        return strategy.get("incentive_deal_hunter") or "只给有门槛、算得过账的权益；发券回不了本就不发，只做内容和积分提醒"
+    if group == "price_sensitive":
+        return strategy.get("incentive_price_sensitive") or strategy.get("incentive")
+    return strategy.get("incentive")
 
 
 # ---------- 大促日历 ----------
@@ -117,7 +137,7 @@ def upcoming_events(cutoff: pd.Timestamp, pb: dict, horizon_days: int = 365) -> 
 
 def plan_actions(m: pd.DataFrame, cutoff: pd.Timestamp, pb: dict) -> pd.DataFrame:
     """每位会员一个下一步动作：类型、说明、日期、渠道、单人成本上限。m 需已有 stage / value_tier /
-    value_at_risk / pred_clv_365d / replenish_status / replenish_date / cycle_days。"""
+    value_at_risk / pred_clv_365d / replenish_status / replenish_date / cycle_days，可选 shortfall 相关列。"""
     cp = cfg(pb, "contact_policy")
     combos = {k: match_strategy(*k, pb) or {} for k in set(zip(m["stage"], m["value_tier"]))}
     strat = pd.Series([combos[k] for k in zip(m["stage"], m["value_tier"])], index=m.index)
@@ -147,6 +167,11 @@ def plan_actions(m: pd.DataFrame, cutoff: pd.Timestamp, pb: dict) -> pd.DataFram
             t = "manual" if w == 1 else "manual_queue"
             text = f"{name}：导购人工回访" + ("" if w == 1 else f"（排在第 {w} 周）")
             d = cutoff + pd.Timedelta(days=7 * (w - 1) + 1)
+        elif r.get("shortfall") and r["stage"] in REPLENISH_STAGES:
+            t = "shortfall"
+            text = (f"未达预期（预期 {r['expected_purchases_cp']:.1f} 次，实际 {r['actual_purchases_cp']:.0f} 次）："
+                    f"{(r['shortfall_reasons'] or '原因待回访').split('；')[0]}")
+            d = cutoff + pd.Timedelta(days=1)
         elif r["replenish_status"] == "补货窗口":
             t, text, d = "replenish", f"补货提醒（{r['cycle_days']:.0f} 天周期）", max(r["replenish_date"], cutoff + pd.Timedelta(days=1))
         elif r["stage"] in ("at_risk", "dormant", "one_time"):

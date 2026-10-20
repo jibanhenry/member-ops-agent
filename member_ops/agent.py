@@ -40,13 +40,21 @@ def build_system_prompt(store: MemberStore) -> str:
 - 生命周期、价值分层和策略来自商家的运营 Playbook；流失概率和未来消费来自模型预测，模型可信度可用 get_model_report 查询
 - 价值分层综合历史消费和预测未来一年消费；"价值下滑"指历史排名高但预测排名低，"潜力上升"相反
 - 每位会员已排好一个下一步动作（人工回访按导购产能排队、补货窗口提醒、临近大促并入大促推送等），用 get_action_plan 看全局安排
-- 单人成本上限 = 预测未来一年消费 × 策略规定比例；价格敏感的会员才用让利型权益
+- 单人成本上限 = 预测未来一年消费 × 策略规定比例
+- 权益分四组：高价值会员一律不做价格减免；"羊毛党"（几乎只在打折时买、且不是高价值）发券回不了本就不发；价格敏感的会员才用让利型权益；其余给体验和小样
+- 每位会员有付费预期跟踪：检查点上预测的消费次数 vs 实际，明显不够的是"未达预期"，附原因，用 find_members(shortfall=true) 圈选
+- 算账口径：用户 ROI =（预测消费 × 实际毛利率 − 真实运营成本）÷ 真实运营成本。实际毛利率按会员自己的折扣率折算；真实成本 = 每人固定成本 + 按下一步动作计价的动作投入（导购回访、定向触达、补货提醒等）+ 权益（让利全额、赠品成本价），不是券面额。用 get_budget_plan 看各人群 ROI 和整体是否为正
+- 两个 ROI 管不同的事：用户 ROI 说明"这个人值不值得花这些钱"，只用来定成本上限和预算倾斜；"这笔钱有没有带来额外消费"要看对照实验的增量 ROI（实验组和对照组'实际 − 预测'的差距），只有它能决定一个动作要不要继续。没有实验数据的人群要说"待验证"，不要拿用户 ROI 当作活动效果
+- 活动用 create_campaign 登记并留对照组，用 evaluate_campaign 评估；回放演示的活动没有真实执行，不能当作效果证据
+- 高价值画像和拉新来源用 get_value_portrait 查询
 </data_context>
 
 工作方式：
 - 先用工具取数再下结论，数字以工具返回为准，不要凭空估计；工具里没有的信息（如会员姓名、投诉内容）直接说明没有。
-- 给运营方案时写清：目标人群和人数、具体动作、时机、权益和成本、衡量指标，并用 simulate_campaign 算账。挽留提升率等假设要明确标注为假设。
+- 给运营方案时写清：目标人群和人数、具体动作、时机、权益和成本、衡量指标，并用 simulate_campaign 算账。核销率、权益金额等假设要明确标注为假设。
 - 方案里的权益成本不要超过成本上限；时机要考虑导购产能和近期大促档期，不要建议超过频控的触达。
+- 不要给高价值会员建议折扣、满减等价格减免；给羊毛党发券前先用 simulate_campaign(incentive_group="deal_hunter", incentive_type="price_cut") 算账，ROI 为负就不发。
+- 拉新和留存的预算优先给生命周期价值高的人群，整体用户 ROI 必须为正；建议新活动时提醒留对照组，并说明以该人群规模能测出多大的提升。
 - 用中文回答，结论先行，适度使用小标题和列表，金额带单位。"""
 
 
@@ -92,7 +100,7 @@ class OllamaBackend:
         # 本地小模型每秒只能生成十来个字，回答长度直接决定等待时间
         self.system = system + """
 - 回答控制在 400 字以内，只给最关键的数字和动作；一个问题通常调用 1~2 次工具就够了，不要用不同参数反复查询同一件事。
-- ROI、挽回收入、活动成本这类数字只能来自 simulate_campaign 的返回结果，没调用就不要写。"""
+- ROI、挽回收入、活动成本这类数字只能来自 simulate_campaign 或 get_budget_plan 的返回结果，没调用就不要写。"""
         self.tools = [{"type": "function", "function": {
             "name": t["name"], "description": t["description"], "parameters": t["input_schema"]}} for t in TOOL_SPECS]
 
@@ -152,7 +160,7 @@ class OllamaBackend:
     def _unverified_math(answer: str, trace: list) -> bool:
         """小模型常"心算"投入产出，这里拦截没有经过测算工具的 ROI 数字。"""
         claims = re.search(r"ROI|投入产出|回报率|挽回(收入|消费)", answer)
-        return bool(claims) and not any(t["tool"] == "simulate_campaign" and "error" not in t for t in trace)
+        return bool(claims) and not any(t["tool"] in ("simulate_campaign", "get_budget_plan") and "error" not in t for t in trace)
 
 
 # ---------- 云端模型：Claude ----------
@@ -267,6 +275,14 @@ class MemberOpsAgent:
 
 # ---------- 离线规则引擎 ----------
 
+def _fmt_pct(v):
+    return "—" if v is None else f"{v:.0%}"
+
+
+def _fmt_times(v):
+    return "—" if v is None else f"{v:.1f} 倍"
+
+
 def _fmt_money(v, cur):
     return f"¥{v:,.0f}" if cur == "CNY" else f"{v:,.0f} {cur}"
 
@@ -314,6 +330,47 @@ def offline_answer(store: MemberStore, message: str, note: str | None = None) ->
                   f"排进 {mn['max_weeks']} 周的有 {mn['scheduled']:,} 人，其余 {mn['overflow_to_auto']:,} 人转自动触达",
                   f"- 处于补货窗口 {rp['in_window']:,} 人，按个人或品牌周期提醒",
                   "- 近期档期：" + ("；".join(f"{e['name']} {e['start']} 起（{e['days_until']} 天后）" for e in a["upcoming_events"][:3]) or "未配置")]
+        return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
+
+    if any(k in message for k in ("ROI", "roi", "预算", "羊毛", "算账", "投入产出", "值不值")):
+        b = run_tool(store, "get_budget_plan", {})
+        calls.append({"tool": "get_budget_plan", "input": {}})
+        r = b["overall_roi"]
+        lines += [f"### 运营预算与用户 ROI：整体 ROI {_fmt_times(r)}（{'为正' if r and r > 0 else '为负'}）",
+                  f"- 一年真实运营成本 {_fmt_money(b['total_cost'], cur)}，会员预测毛利 {_fmt_money(b['total_pred_gross_profit'], cur)}",
+                  f"- 高价值会员占成本 {_fmt_pct(b['high_value_cost_share'])}、占预测毛利 {_fmt_pct(b['high_value_profit_share'])}",
+                  f"- 羊毛党 {b['deal_hunters']:,} 人，其中 {b['deal_hunters_no_coupon']:,} 人毛利抵不过发券成本，不发券",
+                  "", "| 人群 | 运营成本 | 预测毛利 | ROI | 建议 |", "|---|---|---|---|---|"]
+        lines += [f"| {x['segment']} | {_fmt_money(x['real_cost'], cur)} | {_fmt_money(x['pred_gross_profit'], cur)} | "
+                  f"{_fmt_times(x['roi'])} | {x['advice']} |" for x in b["rows"]]
+        return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
+
+    if any(k in message for k in ("画像", "拉新", "高价值会员是", "长什么样")):
+        v = run_tool(store, "get_value_portrait", {})
+        calls.append({"tool": "get_value_portrait", "input": {}})
+        lines += ["### 高价值会员明显集中的特征（TGI）"]
+        lines += [f"- {x['dimension']}：{x['value']}，占高价值 {x['high_share']:.0%}，TGI {x['tgi']:.0f}" for x in v["portrait"]["over_index"][:6]]
+        acq = v["acquisition"]
+        lines += ["", f"### 拉新来源：首单金额段（{acq['cohort_note']}）"]
+        lines += [f"- {x['group']}：首年人均消费 {_fmt_money(x['first_year_spend'], cur)}，现在高价值占比 {x['high_share']:.0%}"
+                  for x in acq["by_first_amount"]]
+        return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
+
+    if any(k in message for k in ("活动", "实验", "对照", "有没有用", "额外消费", "增量")):
+        cs = run_tool(store, "list_campaigns", {})["campaigns"]
+        calls.append({"tool": "list_campaigns", "input": {}})
+        if not cs:
+            lines += ["还没有登记活动。在看板的「活动与对照实验」里新建活动会自动留出对照组，结束后对比两组'实际 − 预测'的差距，就能算出这笔钱带来的额外消费和增量 ROI。"]
+        for c in cs:
+            r = c.get("result") or {}
+            lines += [f"### {c['name']}（{c['start_date']} 至 {c['end_date']}）",
+                      f"- 实验组 {c['design']['treat_members']:,} 人，对照组 {c['design']['control_members']:,} 人"]
+            if r:
+                lines += [f"- 每人额外消费 {_fmt_money(r['incremental_per_member'], cur)}（95% 区间 {_fmt_money(r['ci95'][0], cur)} ~ {_fmt_money(r['ci95'][1], cur)}），"
+                          f"{'显著' if r['significant'] else '不显著'}；增量 ROI {_fmt_times(r['incremental_roi'])}",
+                          f"- 结论：{r['verdict']}"] + ([f"- {r['note']}"] if r.get("note") else [])
+            else:
+                lines += ["- 还没有评估"]
         return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
 
     mv = store.report.get("member_value")

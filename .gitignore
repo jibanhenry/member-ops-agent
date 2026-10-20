@@ -5,3 +5,4 @@ data/processed/
 .DS_Store
 ._*
 .claude/
+data/campaigns.json
