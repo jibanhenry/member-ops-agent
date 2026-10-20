@@ -7,198 +7,244 @@
 <style>
 :root {
   color-scheme: light;
-  --bg: #f4f4f2;
-  --surface-1: #fcfcfb;
-  --surface-2: #f0efec;
-  --surface-3: #e8e7e3;
-  --border: #e2e1dc;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #7a7974;
-  --series-1: #2a78d6;
-  --seq-1: #e8f1fc; --seq-2: #c5dcf6; --seq-3: #8fbcee; --seq-4: #4f93e0; --seq-5: #2a78d6;
-  --accent: #2a78d6;
-  --accent-soft: #e8f1fc;
-  --accent-ink: #ffffff;
-  --good: #1f8a5b;
-  --warn: #b5560f;
-  --radius: 12px;
-  --shadow: 0 1px 2px rgba(0,0,0,.04);
+  --bg: #f4f5f7;
+  --surface-1: #ffffff;
+  --surface-2: #f1f2f5;
+  --border: #e6e8ec;
+  --text-primary: #14161a;
+  --text-secondary: #4a4f57;
+  --text-muted: #80868f;
+  --blue: #2f6fed; --blue-d: #1f4fb8; --blue-m: #5a8ef1; --blue-l: #afc7f5; --blue-soft: #eaf1fe;
+  --teal: #12a39a; --teal-l: #a4dcd7;
+  --orange: #e8792b; --orange-ink: #b4551a; --orange-soft: #fdf0e6; --orange-line: #f6d9c2;
+  --green: #16a06a; --green-ink: #0f7a50; --green-soft: #e5f6ee;
+  --risk-0: #e3e6ea; --risk-1: #fbe3d2; --risk-2: #f6c29e; --risk-3: #f09a62; --risk-4: #e8792b; --risk-5: #c45a14;
+  --stage-1: #93b6f7; --stage-2: #c9dbfc; --stage-3: #5a8ef1; --stage-4: #1f4fb8; --stage-5: #e8792b; --stage-6: #b9bec7; --stage-7: #d9dce1;
+  --grey-bar: #c9ced6;
+  --note-bg: #fff8d6; --note-line: #f0dc7a; --note-ink: #5c4b00;
+  --radius: 14px;
+  --shadow-pop: 0 12px 32px rgba(20,22,26,.16);
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --bg: #111110; --surface-1: #1a1a19; --surface-2: #232321; --surface-3: #2c2c29; --border: #33332f;
-    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8d8c84;
-    --series-1: #3987e5;
-    --seq-1: #1d2a3a; --seq-2: #1f3d63; --seq-3: #275a92; --seq-4: #3176c4; --seq-5: #3987e5;
-    --accent: #3987e5; --accent-soft: #1d2a3a; --good: #4cc38a; --warn: #f0a35e; --shadow: none;
+    --bg: #111214; --surface-1: #1a1b1e; --surface-2: #24262a; --border: #313338;
+    --text-primary: #f0f1f3; --text-secondary: #c2c5cc; --text-muted: #8c919a;
+    --blue: #4f8af0; --blue-d: #7aa7f5; --blue-m: #3f74d6; --blue-l: #2c4f8f; --blue-soft: #1c2a42;
+    --teal: #2bb3a9; --teal-l: #1f5f5a;
+    --orange: #f0a35e; --orange-ink: #f4b47a; --orange-soft: #3a2616; --orange-line: #5c3b22;
+    --green: #4cc38a; --green-ink: #6fd3a2; --green-soft: #173528;
+    --risk-0: #3a3d43; --risk-1: #5e3f27; --risk-2: #80502c; --risk-3: #9c5a2c; --risk-4: #d0762f; --risk-5: #f0a35e;
+    --stage-1: #3f74d6; --stage-2: #2c4f8f; --stage-3: #4f8af0; --stage-4: #7aa7f5; --stage-5: #f0a35e; --stage-6: #555a62; --stage-7: #3a3d43;
+    --grey-bar: #4a4e56;
+    --note-bg: #2f2a14; --note-line: #574c1f; --note-ink: #e8d98f;
+    --shadow-pop: 0 12px 32px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #111110; --surface-1: #1a1a19; --surface-2: #232321; --surface-3: #2c2c29; --border: #33332f;
-  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8d8c84;
-  --series-1: #3987e5;
-  --seq-1: #1d2a3a; --seq-2: #1f3d63; --seq-3: #275a92; --seq-4: #3176c4; --seq-5: #3987e5;
-  --accent: #3987e5; --accent-soft: #1d2a3a; --good: #4cc38a; --warn: #f0a35e; --shadow: none;
+  --bg: #111214; --surface-1: #1a1b1e; --surface-2: #24262a; --border: #313338;
+  --text-primary: #f0f1f3; --text-secondary: #c2c5cc; --text-muted: #8c919a;
+  --blue: #4f8af0; --blue-d: #7aa7f5; --blue-m: #3f74d6; --blue-l: #2c4f8f; --blue-soft: #1c2a42;
+  --teal: #2bb3a9; --teal-l: #1f5f5a;
+  --orange: #f0a35e; --orange-ink: #f4b47a; --orange-soft: #3a2616; --orange-line: #5c3b22;
+  --green: #4cc38a; --green-ink: #6fd3a2; --green-soft: #173528;
+  --risk-0: #3a3d43; --risk-1: #5e3f27; --risk-2: #80502c; --risk-3: #9c5a2c; --risk-4: #d0762f; --risk-5: #f0a35e;
+  --stage-1: #3f74d6; --stage-2: #2c4f8f; --stage-3: #4f8af0; --stage-4: #7aa7f5; --stage-5: #f0a35e; --stage-6: #555a62; --stage-7: #3a3d43;
+  --grey-bar: #4a4e56;
+  --note-bg: #2f2a14; --note-line: #574c1f; --note-ink: #e8d98f;
+  --shadow-pop: 0 12px 32px rgba(0,0,0,.5);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+#sheet-list { min-width: 960px; }
+#sheet-list .reasons { min-width: 180px; }
 body { margin: 0; background: var(--bg); color: var(--text-primary);
   font: 14px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
-button { font: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* 顶栏 + 分区导航 */
-header { position: sticky; top: 0; z-index: 5; background: var(--surface-1); border-bottom: 1px solid var(--border); }
-.topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 20px 0; }
-.topbar h1 { font-size: 17px; margin: 0; }
-.meta-line { font-size: 12px; color: var(--text-muted); margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.pill { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); color: var(--text-secondary); cursor: help; }
-nav.tabs { display: flex; gap: 4px; padding: 0 14px; overflow-x: auto; }
-nav.tabs button { border: 0; background: none; color: var(--text-secondary); padding: 10px 10px 9px; cursor: pointer;
-  border-bottom: 2px solid transparent; white-space: nowrap; font-size: 14px; }
-nav.tabs button:hover { color: var(--text-primary); }
-nav.tabs button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 600; }
-
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px 20px; align-items: start; }
-.panel[hidden] { display: none; }
-.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
-.card-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.card-h h2 { font-size: 15px; margin: 0; }
-.card-h .hint { font-size: 12px; color: var(--text-muted); }
-.card-h .actions { margin-left: auto; display: flex; gap: 8px; }
-.sub-h { font-size: 12px; color: var(--text-muted); margin: 0 0 6px; font-weight: 500; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .muted { color: var(--text-muted); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 顶栏 */
+header { position: sticky; top: 0; z-index: 20; background: var(--surface-1); border-bottom: 1px solid var(--border); }
+.topbar { display: flex; align-items: center; gap: 24px; height: 60px; padding: 0 32px; max-width: 1480px; margin: 0 auto; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; white-space: nowrap; }
+.logo i { width: 24px; height: 24px; border-radius: 7px; background: var(--blue); display: block; }
+nav.seg { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; overflow-x: auto; }
+nav.seg button { border: 0; background: none; padding: 6px 16px; border-radius: 7px; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+nav.seg button:hover { color: var(--text-primary); }
+nav.seg button[aria-selected="true"] { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.top-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px; background: var(--surface-2); color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+.chip.blue { background: var(--blue-soft); color: var(--blue-d); }
+.chip.orange { background: var(--orange-soft); color: var(--orange-ink); }
+.chip.green { background: var(--green-soft); color: var(--green-ink); }
+button.chip { border: 0; cursor: pointer; }
+button.chip[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue-d); font-weight: 600; }
+
+main { max-width: 1480px; margin: 0 auto; padding: 24px 32px 96px; }
+.panel[hidden] { display: none; }
+.grid { display: grid; gap: 16px; }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g75 { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.g57 { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.mt { margin-top: 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; min-width: 0; }
+.card-h { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.card-h h2 { font-size: 16px; margin: 0; }
+.card-h .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.card-h .act { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.section-h { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; }
+.section-h h2 { font-size: 20px; margin: 0; }
+.section-h .sub { font-size: 13px; color: var(--text-muted); }
+.legend { display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); align-items: center; flex-wrap: wrap; }
+.legend b { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 4px; vertical-align: -1px; }
+.note { background: var(--note-bg); border: 1px solid var(--note-line); color: var(--note-ink); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-top: 12px; }
 .info { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%;
-  border: 1px solid var(--text-muted); color: var(--text-muted); font-size: 10px; font-weight: 600; cursor: help; vertical-align: 1px; }
-.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
-.cols-3-2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
+  border: 1px solid var(--text-muted); color: var(--text-muted); font-size: 10px; font-weight: 600; cursor: help; vertical-align: 2px; margin-left: 4px; }
+
+/* 按钮 */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-1); font-size: 13px; cursor: pointer; white-space: nowrap; text-decoration: none; color: var(--text-primary); }
+.btn:hover { background: var(--surface-2); }
+.btn.pri { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.pri:hover { filter: brightness(1.06); }
+.btn.ghost { border-color: transparent; background: none; color: var(--blue); padding: 0 6px; }
+.btn.small { height: 26px; padding: 0 10px; font-size: 12px; }
+.btn.icon { width: 32px; padding: 0; font-size: 18px; }
+.btn:disabled { opacity: .5; cursor: wait; }
+
+/* 任务卡 */
+.task { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.task .t { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.task .d { font-size: 13px; color: var(--text-secondary); flex: 1; }
+.task .btn { margin-top: 6px; }
 
 /* 指标卡 */
-.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-.kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); text-align: left; color: inherit; }
-.kpi .label { font-size: 12px; color: var(--text-secondary); }
-.kpi .value { font-size: 22px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.kpi .sub { font-size: 12px; color: var(--text-muted); }
-button.kpi { cursor: pointer; font: inherit; }
-button.kpi:hover { border-color: var(--accent); }
-button.kpi .label::after { content: " →"; color: var(--accent); }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.stat { background: var(--surface-2); border-radius: 8px; padding: 8px 12px; }
-.stat .label { font-size: 12px; color: var(--text-secondary); }
-.stat .value { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 13px; color: var(--text-secondary); }
+.kpi .v { font-size: 28px; font-weight: 600; letter-spacing: -.5px; margin: 2px 0; font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 12px; color: var(--text-muted); }
+.kpi svg { display: block; width: 100%; margin: 12px 0 6px; overflow: visible; }
+button.kpi { display: block; width: 100%; font: inherit; color: inherit; }
+button.kpi:hover { border-color: var(--blue); }
+.v.orange { color: var(--orange-ink); }
+.v.green { color: var(--green-ink); }
+.stat { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.stat.flat { background: var(--surface-2); border: 0; }
+.stat .l { font-size: 12px; color: var(--text-secondary); }
+.stat .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* 图表通用 */
+svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { fill: var(--text-secondary); font-family: inherit; }
+svg .t-muted { fill: var(--text-muted); }
+svg .t-strong { fill: var(--text-primary); font-weight: 600; }
+svg .t-orange { fill: var(--orange-ink); font-weight: 600; }
+svg .t-blue { fill: var(--blue-d); }
+svg .grid-line { stroke: var(--border); }
+svg .hit { cursor: pointer; }
+svg .hit:hover > .shape, svg .hit:focus > .shape { filter: brightness(.92); }
+svg .hit:focus { outline: none; }
+svg .hit:focus > .shape { stroke: var(--text-primary); stroke-width: 2; }
+svg .hl { fill: var(--blue-soft); }
+.chart-wrap { overflow-x: auto; }
+.chart-wrap > svg { min-width: 520px; }
+
+/* 任务看板 */
+.lane { background: var(--surface-2); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.lane h3 { font-size: 13px; margin: 0; display: flex; gap: 8px; align-items: center; }
+.lane-item { text-align: left; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; width: 100%; }
+.lane-item:hover { border-color: var(--blue); }
+.lane-item .row { display: flex; justify-content: space-between; gap: 8px; }
+.lane-item .t { font-weight: 600; }
+.lane-item .m { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.lane-item .m span:last-child { color: var(--blue); }
+.bar { height: 6px; background: var(--surface-2); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 6px; border-radius: 3px; background: var(--blue); }
+.bar.green i { background: var(--green); }
 
 /* 表格 */
 table { border-collapse: collapse; width: 100%; }
-.list th { text-align: left; font-size: 12px; color: var(--text-muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-.list td { padding: 8px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; font-variant-numeric: tabular-nums; }
-.list tr:last-child td { border-bottom: 0; }
-.list tr.click { cursor: pointer; }
-.list tr.click:hover td { background: var(--surface-2); }
-.list th.num { text-align: right; }
-.scroll-x { overflow-x: auto; }
+.tbl th { text-align: left; font-size: 12px; color: var(--text-muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tbl td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; font-variant-numeric: tabular-nums; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl th.num { text-align: right; }
+.tbl tr.click { cursor: pointer; }
+.tbl tr.click:hover td { background: var(--surface-2); }
+.nowrap { white-space: nowrap; }
 .reasons { color: var(--text-secondary); font-size: 12px; }
-.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 99px; background: var(--surface-2); color: var(--text-secondary); margin-left: 4px; white-space: nowrap; }
-.tag.good { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
-.tag.warn { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
-.inbar { display: flex; align-items: center; gap: 8px; }
-.inbar i { display: block; height: 6px; border-radius: 3px; background: var(--series-1); min-width: 2px; }
-.row-go { color: var(--accent); font-size: 12px; white-space: nowrap; }
+.roi-cell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.roi-cell .bar { width: 100px; margin: 0; flex: none; }
+.scroll-x { overflow-x: auto; }
+.empty { text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 13px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
 
-/* 会员结构矩阵 */
-.matrix { min-width: 600px; }
-.matrix td, .matrix th { border: 3px solid var(--surface-1); padding: 0; text-align: center; font-size: 12px; }
-.matrix th { color: var(--text-secondary); font-weight: 500; padding: 6px 4px; }
-.matrix th.row-h { text-align: left; padding-left: 4px; white-space: nowrap; }
-.matrix td button { width: 100%; min-height: 56px; border: 0; border-radius: 8px; cursor: pointer; padding: 6px 4px;
-  color: var(--text-primary); background: var(--surface-2); }
-.matrix td button:hover { filter: brightness(.96); }
-.matrix td button.selected { outline: 2px solid var(--text-primary); outline-offset: -2px; }
-.matrix td button .n { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.matrix td button .r { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.matrix td button.dark-cell { color: #fff; }
-.matrix td button.dark-cell .r { color: #e8eefa; }
-.matrix td.total { text-align: left; padding: 4px 4px 4px 12px; width: 190px; min-width: 150px; }
-.total .n { font-weight: 600; font-variant-numeric: tabular-nums; }
-.share { display: grid; grid-template-columns: 26px minmax(0, 1fr) 32px; gap: 4px; align-items: center; font-size: 11px; color: var(--text-muted); }
-.share i { display: block; height: 5px; border-radius: 3px; background: var(--series-1); min-width: 2px; }
-.share i.rev { background: var(--text-muted); }
-.legend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-top: 10px; flex-wrap: wrap; }
-.legend i { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
-
-/* 行动计划侧栏 */
-.rules { margin: 0; padding: 0; list-style: none; font-size: 13px; }
-.rules li { padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
-.rules li:last-child { border-bottom: 0; }
-.rules b { color: var(--text-primary); }
-.events { list-style: none; padding: 0; margin: 0 0 14px; font-size: 13px; }
-.events li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
-.season { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; align-items: end; height: 64px; }
-.season div { background: var(--series-1); border-radius: 3px 3px 0 0; min-height: 2px; }
-.season-x { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 2px; }
-
-/* 会员 vs 非会员 */
-.compare { max-width: 560px; }
-#plan-capacity { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.compare th, .compare td { padding: 8px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.compare th { font-weight: 500; color: var(--text-muted); text-align: right; }
-.compare th:first-child, .compare td:first-child { text-align: left; color: var(--text-secondary); }
-.compare td { text-align: right; font-variant-numeric: tabular-nums; }
-
-/* 预测准确度 */
-.trust { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px; color: var(--text-secondary); }
-.trust b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-
-/* 按钮与表单 */
-.btn { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); border-radius: 8px; padding: 5px 12px;
-  font-size: 13px; cursor: pointer; white-space: nowrap; }
-.btn:hover { background: var(--surface-2); }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.btn.primary:hover { filter: brightness(1.05); }
-.btn.small { padding: 2px 8px; font-size: 12px; }
-.btn:disabled { opacity: .5; cursor: wait; }
-.camp-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; background: var(--surface-2);
-  border-radius: 10px; padding: 14px; margin-bottom: 14px; font-size: 12px; }
+/* 活动 */
+.steps3 .stat .v { font-size: 14px; font-weight: 400; margin-top: 4px; }
+.camp-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; background: var(--surface-2);
+  border-radius: 12px; padding: 14px; margin-bottom: 14px; font-size: 12px; }
 .camp-form label { display: flex; flex-direction: column; gap: 4px; color: var(--text-secondary); }
 .camp-form input, .camp-form select { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface-1); color: var(--text-primary); }
-.camp-form .form-foot { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
-.camp-detail { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 13px; }
+.camp-form .foot { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+.camp-detail { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; margin-top: 12px; font-size: 13px; }
 .camp-detail table { margin: 8px 0; }
-.empty { text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 13px; }
 
-/* 策略块 */
-.strategy { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; }
-.strategy h3 { margin: 0 0 2px; font-size: 14px; }
-.strategy ul { margin: 6px 0; padding-left: 18px; }
-.strategy .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 4px 12px; margin-top: 8px; }
+/* 高潜卡 */
+.big-num { font-size: 40px; font-weight: 700; letter-spacing: -1px; }
 
-/* 侧拉名单 + 会员详情 */
-dialog { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); padding: 0; }
-dialog::backdrop { background: rgba(0,0,0,.35); }
-dialog.sheet { margin: 0 0 0 auto; height: 100vh; max-height: 100vh; width: min(920px, 100vw); border-radius: 0; border-width: 0 0 0 1px; }
-dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px)); max-height: 85vh; }
-.dlg-h { position: sticky; top: 0; background: var(--surface-1); display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); z-index: 1; }
-.dlg-h h3 { margin: 0; font-size: 16px; }
-.dlg-h .hint { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.dlg-b { padding: 16px 20px 20px; }
-.close { margin-left: auto; border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--text-secondary); padding: 2px 6px; border-radius: 6px; }
-.close:hover { background: var(--surface-2); }
-.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 4px 12px; font-size: 13px; margin: 0 0 12px; }
+/* 侧栏与弹窗 */
+dialog { border: 0; background: var(--surface-1); color: var(--text-primary); padding: 0; }
+dialog::backdrop { background: rgba(20,22,26,.35); }
+dialog.sheet { margin: 0 0 0 auto; height: 100vh; max-height: 100vh; width: min(860px, 100vw); max-width: 100vw; border-left: 1px solid var(--border); box-shadow: var(--shadow-pop); }
+dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px)); max-height: 85vh; border: 1px solid var(--border); }
+.sheet-h { position: sticky; top: 0; z-index: 1; background: var(--surface-1); }
+.sheet-top { display: flex; align-items: flex-start; gap: 12px; padding: 20px 24px 12px; flex-wrap: wrap; }
+.sheet-top h3 { margin: 2px 0 0; font-size: 20px; }
+.crumb { font-size: 12px; color: var(--text-muted); }
+.sheet-chips { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.sheet-acts { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.tabs2 { display: flex; gap: 22px; border-bottom: 1px solid var(--border); padding: 0 24px; }
+.tabs2 button { border: 0; background: none; padding: 10px 0; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; }
+.tabs2 button[aria-selected="true"] { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--blue); }
+.sheet-b { padding: 16px 24px 24px; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.filters .muted { margin-left: auto; font-size: 12px; }
+.more { display: flex; justify-content: center; gap: 12px; align-items: center; margin-top: 14px; font-size: 13px; color: var(--text-muted); }
+.strategy { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; font-size: 13px; margin-bottom: 12px; }
+.strategy h3 { margin: 0 0 2px; font-size: 15px; }
+.strategy ul { margin: 8px 0; padding-left: 18px; }
+.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; margin: 0 0 12px; }
 .kv dt { color: var(--text-muted); }
 .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
-dialog h4 { margin: 14px 0 6px; font-size: 13px; }
+.modal-h { position: sticky; top: 0; background: var(--surface-1); display: flex; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); }
+.modal-h h3 { margin: 0; font-size: 16px; }
+.modal-b { padding: 16px 20px 20px; }
+.modal-b h4 { margin: 14px 0 6px; font-size: 13px; }
+.close { margin-left: auto; }
 
-/* 对话 */
-.chat { position: sticky; top: 112px; display: flex; flex-direction: column; height: calc(100vh - 128px); padding: 0; overflow: hidden; margin: 0; }
-.chat .card-h { padding: 14px 16px 0; margin: 0; }
-.msgs { flex: 1; overflow-y: auto; padding: 4px 16px 12px; }
-.msg { margin: 10px 0; }
+/* 运营助手：浮动按钮 + 右侧抽屉 */
+.fab { position: fixed; right: 28px; bottom: 24px; z-index: 30; display: flex; align-items: center; gap: 10px; border: 0; cursor: pointer;
+  background: var(--text-primary); color: var(--surface-1); border-radius: 99px; padding: 10px 20px 10px 12px; box-shadow: var(--shadow-pop); font-size: 14px; }
+.fab i { width: 26px; height: 26px; border-radius: 50%; background: var(--blue); display: block; }
+.fab .badge { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); display: none; }
+.fab.unread .badge { display: block; }
+.fab[hidden] { display: none; }
+.chat { position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(440px, 100vw); background: var(--surface-1); border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-pop); display: flex; flex-direction: column; transform: translateX(105%); transition: transform .2s ease; visibility: hidden; }
+.chat.open { transform: none; visibility: visible; }
+.chat-h { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.chat-h h2 { margin: 0; font-size: 16px; }
+.chat-h .sub { font-size: 12px; color: var(--text-muted); }
+.msgs { flex: 1; overflow-y: auto; padding: 8px 20px 12px; }
+.msg { margin: 12px 0; }
 .msg.user { text-align: right; }
-.msg.user .bubble { display: inline-block; background: var(--accent); color: #fff; padding: 8px 12px; border-radius: 12px 12px 2px 12px; text-align: left; max-width: 90%; }
-.msg.bot .bubble { background: var(--surface-2); padding: 10px 12px; border-radius: 12px 12px 12px 2px; overflow-x: auto; }
+.msg.user .bubble { display: inline-block; background: var(--blue); color: #fff; padding: 8px 13px; border-radius: 14px 14px 4px 14px; text-align: left; max-width: 88%; }
+.msg.bot .bubble { background: var(--surface-2); padding: 10px 13px; border-radius: 14px 14px 14px 4px; overflow-x: auto; }
 .bubble h3 { font-size: 14px; margin: 8px 0 4px; }
 .bubble p { margin: 4px 0; }
 .bubble ul { margin: 4px 0; padding-left: 18px; }
@@ -210,8 +256,8 @@ dialog h4 { margin: 14px 0 6px; font-size: 13px; }
 .steps:empty { display: none; }
 .step { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
 .step .icon { width: 14px; height: 14px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
-.step.running .icon { border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
-.step.ok .icon::before { content: "✓"; color: var(--accent); font-weight: 700; }
+.step.running .icon { border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+.step.ok .icon::before { content: "✓"; color: var(--green); font-weight: 700; }
 .step.fail .icon::before { content: "!"; color: var(--text-primary); font-weight: 700; }
 .step.note { color: var(--text-muted); }
 .answer:empty { display: none; }
@@ -219,159 +265,188 @@ dialog h4 { margin: 14px 0 6px; font-size: 13px; }
 .caret::after { content: "▍"; animation: blink 1s step-end infinite; color: var(--text-muted); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes blink { 50% { opacity: 0; } }
-.suggest { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 16px 10px; }
-.suggest button { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 99px;
-  padding: 4px 10px; font-size: 12px; cursor: pointer; }
-.suggest button:hover { border-color: var(--accent); color: var(--text-primary); }
-#chat-form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
-#chat-form textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font: inherit;
+.suggest { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 10px; }
+.suggest button { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 99px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.suggest button:hover { border-color: var(--blue); color: var(--text-primary); }
+#chat-form { display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); }
+#chat-form textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font: inherit;
   background: var(--surface-1); color: var(--text-primary); height: 42px; }
-#chat-form button { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 0 16px; cursor: pointer; }
+#chat-form button { border: 0; background: var(--blue); color: #fff; border-radius: 8px; padding: 0 16px; cursor: pointer; }
 #chat-form button:disabled { opacity: .5; cursor: wait; }
 
 #tip { position: fixed; pointer-events: none; background: var(--text-primary); color: var(--surface-1); font-size: 12px; line-height: 1.5;
   padding: 6px 9px; border-radius: 6px; display: none; z-index: 100; max-width: 280px; }
 
-@media (max-width: 1240px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 1100px) {
-  .layout { grid-template-columns: minmax(0, 1fr); }
-  .chat { position: static; height: 600px; }
+@media (max-width: 1200px) {
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g75, .g57 { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 720px) {
-  .topbar, .layout { padding-left: 16px; padding-right: 16px; }
-  nav.tabs { padding: 0 6px; }
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cols, .cols-3-2, .trust { grid-template-columns: minmax(0, 1fr); }
-  .meta-line { margin-left: 0; width: 100%; }
+@media (max-width: 760px) {
+  header { position: static; }
+  .topbar { padding: 0 16px; gap: 12px; height: auto; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+  nav.seg { order: 3; width: 100%; }
+  .top-meta { margin-left: auto; }
+  main { padding: 16px 16px 96px; }
+  .g3, .g2 { grid-template-columns: minmax(0, 1fr); }
+  .g5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi .v { font-size: 24px; }
+  .sheet-top, .sheet-b { padding-left: 16px; padding-right: 16px; }
+  .tabs2 { padding: 0 16px; }
+  .fab { right: 16px; bottom: 16px; }
 }
+@media (prefers-reduced-motion: reduce) { .chat { transition: none; } }
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <h1>会员运营工作台</h1>
-    <div class="meta-line"><span id="snapshot"></span><span class="pill" id="dataset" hidden>演示数据</span></div>
+    <div class="logo"><i></i>会员运营工作台</div>
+    <nav class="seg" role="tablist" aria-label="页面分区">
+      <button role="tab" data-tab="overview" aria-selected="true">会员概览</button>
+      <button role="tab" data-tab="plan" aria-selected="false">行动计划</button>
+      <button role="tab" data-tab="budget" aria-selected="false">预算与活动</button>
+      <button role="tab" data-tab="insight" aria-selected="false">价值洞察</button>
+    </nav>
+    <div class="top-meta"><span id="snapshot"></span><span class="chip" id="dataset" hidden>演示数据</span></div>
   </div>
-  <nav class="tabs" role="tablist" aria-label="页面分区">
-    <button role="tab" data-tab="overview" aria-selected="true">会员概览</button>
-    <button role="tab" data-tab="plan" aria-selected="false">行动计划</button>
-    <button role="tab" data-tab="budget" aria-selected="false">预算与活动</button>
-    <button role="tab" data-tab="insight" aria-selected="false">价值洞察</button>
-  </nav>
 </header>
 
-<div class="layout">
-  <main>
-    <!-- 会员概览：核心指标 + 生命周期 × 价值结构 -->
-    <section class="panel" id="tab-overview" role="tabpanel">
-      <div class="kpis" id="kpis"></div>
-
+<main>
+  <!-- 会员概览：今天的任务 + 核心指标 + 收入与风险结构 -->
+  <section class="panel" id="tab-overview" role="tabpanel">
+    <div class="section-h"><h2>今天先做这几件事</h2><span class="sub">按风险金额和时效排序</span></div>
+    <div class="grid g4" id="tasks"></div>
+    <div class="grid g4 mt" id="kpis"></div>
+    <div class="grid g75 mt">
       <div class="card">
-        <div class="card-h"><h2>会员结构</h2><span class="hint">生命周期 × 价值分层，格内为人数和流失风险金额，点击格子查看策略和名单</span></div>
-        <div class="scroll-x"><table class="matrix" id="matrix"></table></div>
-        <div class="legend" id="matrix-legend"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-h"><h2>预测靠谱吗</h2><span class="hint">用历史数据回看：当时的预测和后来实际发生的对比</span></div>
-        <div class="trust" id="trust"></div>
-      </div>
-    </section>
-
-    <!-- 行动计划：每人一个下一步动作 + 产能与节奏 -->
-    <section class="panel" id="tab-plan" role="tabpanel" hidden>
-      <div class="card">
-        <div class="card-h"><h2>下一步动作</h2><span class="hint">每位会员只排一个动作，点击一行查看名单</span></div>
-        <div class="cols-3-2">
-          <div class="scroll-x"><table class="list" id="plan-actions"></table></div>
-          <div>
-            <div class="sub-h">导购产能</div>
-            <div class="stats" id="plan-capacity"></div>
-            <div class="sub-h">触达规则</div>
-            <ul class="rules" id="plan-rules"></ul>
-          </div>
-        </div>
+        <div class="card-h"><div><h2>谁在贡献收入</h2><div class="sub">各生命周期阶段的人数占比 vs 收入占比，点一行看该阶段名单</div></div>
+          <div class="act legend"><span><b style="background:var(--blue)"></b>人数</span><span><b style="background:var(--teal)"></b>收入</span></div></div>
+        <div id="butterfly"></div>
+        <div class="note" id="butterfly-note"></div>
       </div>
       <div class="card">
-        <div class="card-h"><h2>大促节奏</h2><span class="hint">临近大促的自动挽留会并入大促推送</span></div>
-        <div class="cols">
-          <div><div class="sub-h">近期档期</div><ul class="events" id="plan-events"></ul></div>
-          <div><div class="sub-h">各月收入占全年</div><div class="season" id="season"></div><div class="season-x" id="season-x"></div></div>
-        </div>
+        <div class="card-h"><div><h2>风险集中在哪</h2><div class="sub">圆越大人越多，颜色越深流失风险金额越高，点圆看策略和名单</div></div></div>
+        <div id="bubbles"></div>
+        <div class="legend" style="margin-top:10px">风险金额 低 <b style="background:var(--risk-1)"></b><b style="background:var(--risk-2)"></b><b style="background:var(--risk-3)"></b><b style="background:var(--risk-4)"></b><b style="background:var(--risk-5)"></b> 高</div>
       </div>
-    </section>
+    </div>
+    <div class="card mt" id="trust"></div>
+  </section>
 
-    <!-- 预算与活动：算账 + 效果验证 -->
-    <section class="panel" id="tab-budget" role="tabpanel" hidden>
+  <!-- 行动计划 -->
+  <section class="panel" id="tab-plan" role="tabpanel" hidden>
+    <div class="grid g3" id="lanes"></div>
+    <div class="grid g57 mt">
       <div class="card">
-        <div class="card-h"><h2>预算与回报</h2>
-          <span class="info" data-tip="用户 ROI =（预测一年消费 × 实际毛利率 − 运营成本）÷ 运营成本。运营成本 = 固定成本 + 动作投入 + 权益。">?</span>
-          <span class="hint">按人群算一年投入和预测毛利，点击一行查看策略和名单</span></div>
-        <div class="stats" id="budget-stats"></div>
-        <div class="scroll-x"><table class="list" id="budget-rows"></table></div>
+        <div class="card-h"><div><h2>导购排期</h2><div class="sub" id="cap-sub"></div></div></div>
+        <div id="capacity"></div>
+        <div class="grid g2" style="margin-top:12px" id="cap-stats"></div>
       </div>
-
       <div class="card">
-        <div class="card-h"><h2>活动效果验证</h2>
-          <span class="info" data-tip="上线时随机留一部分会员作对照组（活动期间不触达），结束后对比两组的实际消费，算出这笔投入带来的额外消费。">?</span>
-          <div class="actions"><button class="btn" id="camp-demo">看一个示例</button><button class="btn primary" id="camp-new">新建活动</button></div></div>
-        <form class="camp-form" id="camp-form" hidden>
-          <label>活动名称<input name="name" required value="单次客第二单激活"></label>
-          <label>目标人群<select name="segment" id="camp-segment"></select></label>
-          <label>权益分组<select name="incentive_group"><option value="">全部</option><option value="no_price_cut">高价值·不降价</option>
-            <option value="deal_hunter">羊毛党</option><option value="price_sensitive">价格敏感</option><option value="regular">非价格敏感</option></select></label>
-          <label>动作<input name="action" required value="补货提醒 + 积分兑换小样"></label>
-          <label>权益类型<select name="incentive_type"><option value="gift">赠品/小样（按成本价）</option><option value="price_cut">满减折扣（按面额）</option>
-            <option value="experience">体验服务</option></select></label>
-          <label>单人权益（元）<input name="cost_per_member" type="number" min="0" value="100"></label>
-          <label>预计核销率<input name="redemption_rate" type="number" min="0" max="1" step="0.01" value="0.3"></label>
-          <label>对照组比例<input name="holdout_pct" type="number" min="0.02" max="0.5" step="0.01" value="0.2"></label>
-          <label>观察天数<input name="window_days" type="number" min="7" value="90"></label>
-          <div class="form-foot"><button class="btn" type="button" id="camp-cancel">取消</button><button class="btn primary" type="submit">登记并分组</button></div>
-        </form>
-        <div class="scroll-x"><table class="list" id="camp-rows"></table></div>
-        <div id="camp-detail"></div>
+        <div class="card-h"><div><h2>大促节奏</h2><div class="sub" id="season-sub"></div></div></div>
+        <div class="chart-wrap" id="season"></div>
+        <div class="sub muted" style="margin-top:10px;font-size:12px" id="rules"></div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- 价值洞察：会员价值、高价值画像、拉新来源 -->
-    <section class="panel" id="tab-insight" role="tabpanel" hidden>
-      <div class="card" id="member-value-card" hidden>
-        <div class="card-h"><h2>会员 vs 非会员</h2><span class="hint" id="member-value-period"></span></div>
-        <table class="compare" id="member-value"></table>
-      </div>
-
+  <!-- 预算与活动 -->
+  <section class="panel" id="tab-budget" role="tabpanel" hidden>
+    <div class="grid g5" id="budget-stats"></div>
+    <div class="grid g75 mt">
       <div class="card">
-        <div class="card-h"><h2>高价值会员画像</h2>
-          <span class="info" data-tip="集中度 = 该特征在高价值会员中的占比 ÷ 在全体会员中的占比 × 100。大于 120 说明高价值会员明显集中在这类人里。">?</span>
-          <span class="hint">高价值会员明显集中的特征</span></div>
-        <div class="scroll-x"><table class="list" id="portrait-tgi"></table></div>
+        <div class="card-h"><div><h2>钱花在哪、回报多少<span class="info" data-tip="用户 ROI =（预测一年消费 × 实际毛利率 − 运营成本）÷ 运营成本。运营成本 = 固定成本 + 动作投入 + 权益。">?</span></h2>
+          <div class="sub">每个圆是一类人群：越靠右人均投入越多，越靠上回报越高，圆越大人越多</div></div>
+          <div class="act legend"><span><b style="background:var(--blue-d)"></b>高价值</span><span><b style="background:var(--blue-m)"></b>中价值</span><span><b style="background:var(--blue-l)"></b>低价值</span></div></div>
+        <div class="chart-wrap" id="scatter"></div>
       </div>
-
       <div class="card">
-        <div class="card-h"><h2>拉新来源质量</h2><span class="hint" id="acq-note"></span></div>
-        <div class="cols">
-          <div class="scroll-x"><div class="sub-h">按首单金额</div><table class="list" id="acq-amount"></table></div>
-          <div class="scroll-x"><div class="sub-h">按首单品牌（首年人均消费前 8）</div><table class="list" id="acq-brand"></table></div>
-        </div>
+        <div class="card-h"><div><h2 id="roi-title">回报最低的 5 类人群</h2><div class="sub">优先检查这些人群的投入，点一行看策略和名单</div></div>
+          <div class="act"><button class="btn ghost" id="roi-toggle">全部人群 ›</button></div></div>
+        <div class="scroll-x"><table class="tbl" id="roi-rows"></table></div>
       </div>
-    </section>
-  </main>
+    </div>
+    <div class="card mt">
+      <div class="card-h"><div><h2>活动效果验证</h2><div class="sub">随机留对照组，活动结束后对比两组的实际消费</div></div>
+        <div class="act"><button class="btn" id="camp-demo">看一个示例</button><button class="btn pri" id="camp-new">＋ 新建活动</button></div></div>
+      <form class="camp-form" id="camp-form" hidden>
+        <label>活动名称<input name="name" required value="单次客第二单激活"></label>
+        <label>目标人群<select name="segment" id="camp-segment"></select></label>
+        <label>权益分组<select name="incentive_group"><option value="">全部</option><option value="no_price_cut">高价值·不降价</option>
+          <option value="deal_hunter">羊毛党</option><option value="price_sensitive">价格敏感</option><option value="regular">非价格敏感</option></select></label>
+        <label>动作<input name="action" required value="补货提醒 + 积分兑换小样"></label>
+        <label>权益类型<select name="incentive_type"><option value="gift">赠品/小样（按成本价）</option><option value="price_cut">满减折扣（按面额）</option>
+          <option value="experience">体验服务</option></select></label>
+        <label>单人权益（元）<input name="cost_per_member" type="number" min="0" value="100"></label>
+        <label>预计核销率<input name="redemption_rate" type="number" min="0" max="1" step="0.01" value="0.3"></label>
+        <label>对照组比例<input name="holdout_pct" type="number" min="0.02" max="0.5" step="0.01" value="0.2"></label>
+        <label>观察天数<input name="window_days" type="number" min="7" value="90"></label>
+        <div class="foot"><button class="btn" type="button" id="camp-cancel">取消</button><button class="btn pri" type="submit">登记并分组</button></div>
+      </form>
+      <div id="camp-body"></div>
+      <div id="camp-detail"></div>
+    </div>
+  </section>
 
-  <aside class="card chat">
-    <div class="card-h"><h2>运营助手</h2><span class="hint">用大白话问会员的事</span></div>
-    <div class="msgs" id="msgs"></div>
-    <div class="suggest" id="suggest"></div>
-    <form id="chat-form">
-      <textarea id="input" placeholder="比如：哪些高价值会员有流失风险？"></textarea>
-      <button type="submit" id="send">发送</button>
-    </form>
-  </aside>
-</div>
+  <!-- 价值洞察 -->
+  <section class="panel" id="tab-insight" role="tabpanel" hidden>
+    <div class="grid g2">
+      <div class="card">
+        <div class="card-h"><div><h2>高价值会员集中在哪些人里<span class="info" data-tip="集中度 = 该特征在高价值会员中的占比 ÷ 在全体会员中的占比 × 100。大于 120 说明高价值会员明显集中在这类人里。">?</span></h2>
+          <div class="sub">集中度，100 表示与整体持平</div></div></div>
+        <div class="chart-wrap" id="tgi"></div>
+      </div>
+      <div class="card" id="compare-card" hidden>
+        <div class="card-h"><div><h2>会员 vs 非会员</h2><div class="sub" id="compare-sub"></div></div>
+          <div class="act legend"><span><b style="background:var(--blue)"></b>会员</span><span><b style="background:var(--grey-bar)"></b>非会员</span></div></div>
+        <div class="chart-wrap" id="compare"></div>
+        <div class="note" id="compare-note"></div>
+      </div>
+    </div>
+    <div class="grid g75 mt">
+      <div class="card">
+        <div class="card-h"><div><h2>拉新来源质量</h2><div class="sub" id="acq-sub"></div></div>
+          <div class="act" role="group" aria-label="拉新维度"><button class="chip" data-acq="amount" aria-pressed="true">按首单金额</button><button class="chip" data-acq="brand" aria-pressed="false">按首单品牌</button></div></div>
+        <div class="chart-wrap" id="acq"></div>
+      </div>
+      <div class="card" id="potential"></div>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" aria-controls="chat" aria-expanded="false"><i></i>问问运营助手<span class="badge"></span></button>
+<aside class="chat" id="chat" aria-label="运营助手">
+  <div class="chat-h"><div><h2>运营助手</h2><div class="sub" id="chat-context"></div></div><button class="btn icon close" id="chat-close" aria-label="收起助手">×</button></div>
+  <div class="msgs" id="msgs"></div>
+  <div class="suggest" id="suggest"></div>
+  <form id="chat-form">
+    <textarea id="input" placeholder="问问你的会员…" aria-label="输入问题"></textarea>
+    <button type="submit" id="send">发送</button>
+  </form>
+</aside>
 
 <dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
-  <div class="dlg-h"><div><h3 id="sheet-title"></h3><div class="hint" id="sheet-hint"></div></div><button class="close" aria-label="关闭">×</button></div>
-  <div class="dlg-b"><div id="sheet-strategy"></div><div class="scroll-x"><table class="list" id="sheet-list"></table></div></div>
+  <div class="sheet-h">
+    <div class="sheet-top">
+      <div><div class="crumb" id="sheet-crumb"></div><h3 id="sheet-title"></h3><div class="sheet-chips" id="sheet-chips"></div></div>
+      <div class="sheet-acts"><a class="btn" id="sheet-export" download>导出名单</a><button class="btn pri" id="sheet-campaign">为这群人发起活动</button><button class="btn icon" id="sheet-close" aria-label="关闭">×</button></div>
+    </div>
+    <div class="tabs2" role="tablist" id="sheet-tabs">
+      <button role="tab" data-stab="list" aria-selected="true">名单</button>
+      <button role="tab" data-stab="strategy" aria-selected="false">策略</button>
+      <button role="tab" data-stab="economics" aria-selected="false">算账</button>
+    </div>
+  </div>
+  <div class="sheet-b">
+    <div data-spanel="list">
+      <div class="filters" id="sheet-filters"></div>
+      <div class="scroll-x"><table class="tbl" id="sheet-list"></table></div>
+      <div class="more" id="sheet-more"></div>
+    </div>
+    <div data-spanel="strategy" hidden id="sheet-strategy"></div>
+    <div data-spanel="economics" hidden id="sheet-economics"></div>
+  </div>
 </dialog>
 <dialog id="drawer" class="modal"></dialog>
 <div id="tip" role="tooltip"></div>
@@ -382,203 +457,353 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const api = (path, opts) => fetch(path, opts).then(async r => { if (!r.ok) throw new Error((await r.json()).detail || r.statusText); return r.json(); });
 let CUR = "USD";
 const money = v => v == null ? "—" : `${{USD: "$", CNY: "¥"}[CUR] || ""}${Math.round(v).toLocaleString()}`;
-// 卡片和矩阵空间小，人民币大数用"万/亿"
+// 卡片和图表空间小，人民币大数用"万/亿"
 const moneyShort = v => v == null ? "—" : CUR !== "CNY" || Math.abs(v) < 1e4 ? money(v)
   : Math.abs(v) >= 1e8 ? `¥${(v / 1e8).toFixed(2)} 亿` : `¥${Math.round(v / 1e4).toLocaleString()} 万`;
 const pct = v => v == null ? "—" : `${(v * 100).toFixed(0)}%`;
 const roiText = v => v == null ? "—" : `${v.toFixed(1)} 倍`;
-let STAGE_ORDER = [];  // 取自 Playbook 的 stage_names 顺序
-const TIER_ORDER = ["high", "mid", "low"];
+const n0 = v => Math.round(v).toLocaleString();
+const TIERS = [["high", "高价值"], ["mid", "中价值"], ["low", "低价值"]];
+const S = {};  // 看板数据，loadDashboard 后填充
 
 // ---------- 提示框 ----------
 const tip = $("#tip");
 const showTip = (html, x, y) => { tip.innerHTML = html; tip.style.display = "block";
-  tip.style.left = Math.min(x + 12, innerWidth - 292) + "px"; tip.style.top = Math.min(y + 12, innerHeight - tip.offsetHeight - 8) + "px"; };
+  tip.style.left = Math.max(8, Math.min(x + 12, innerWidth - tip.offsetWidth - 8)) + "px";
+  tip.style.top = Math.min(y + 12, innerHeight - tip.offsetHeight - 8) + "px"; };
+const hideTip = () => tip.style.display = "none";
 function bindTip(el, html) {
   el.addEventListener("mousemove", e => showTip(html, e.clientX, e.clientY));
-  el.addEventListener("mouseleave", () => tip.style.display = "none");
+  el.addEventListener("mouseleave", hideTip);
+  el.addEventListener("focus", () => { const r = el.getBoundingClientRect(); showTip(html, r.left, r.bottom); });
+  el.addEventListener("blur", hideTip);
 }
-// 静态说明图标：悬停或键盘聚焦都能看到
-document.querySelectorAll(".info[data-tip]").forEach(el => {
-  el.tabIndex = 0; el.setAttribute("aria-label", el.dataset.tip);
-  bindTip(el, esc(el.dataset.tip));
-  el.addEventListener("focus", () => { const r = el.getBoundingClientRect(); showTip(esc(el.dataset.tip), r.left, r.bottom); });
-  el.addEventListener("blur", () => tip.style.display = "none");
-});
+document.querySelectorAll(".info[data-tip]").forEach(el => { el.tabIndex = 0; el.setAttribute("aria-label", el.dataset.tip); bindTip(el, esc(el.dataset.tip)); });
+// SVG 里可点的图形：鼠标、键盘都能触发
+function bindHits(root, tipFor, onClick) {
+  root.querySelectorAll(".hit").forEach(g => {
+    g.setAttribute("tabindex", "0"); g.setAttribute("role", "button");
+    bindTip(g, tipFor(g.dataset));
+    g.addEventListener("click", () => { hideTip(); onClick(g.dataset); });
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); hideTip(); onClick(g.dataset); } });
+  });
+}
 
 // ---------- 分区切换 ----------
-const TABS = ["overview", "plan", "budget", "insight"];
+const TABS = {overview: "会员概览", plan: "行动计划", budget: "预算与活动", insight: "价值洞察"};
 function showTab(name) {
-  if (!TABS.includes(name)) name = "overview";
-  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === name));
-  TABS.forEach(t => $(`#tab-${t}`).hidden = t !== name);
+  if (!TABS[name]) name = "overview";
+  document.querySelectorAll("nav.seg button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === name));
+  Object.keys(TABS).forEach(t => $(`#tab-${t}`).hidden = t !== name);
   if (location.hash.slice(1) !== name) history.replaceState(null, "", `#${name}`);
+  renderSuggestions(name);
 }
-document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => { showTab(b.dataset.tab); scrollTo({top: 0}); });
-showTab(location.hash.slice(1));
+document.querySelectorAll("nav.seg button").forEach(b => b.onclick = () => { showTab(b.dataset.tab); scrollTo({top: 0}); });
+addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 
-// ---------- 看板 ----------
+// ---------- 数据加载 ----------
 async function loadDashboard() {
   const [status, ov, mx, rep, plan, budget, portrait, camps] = await Promise.all([api("/api/status"), api("/api/overview"), api("/api/matrix"),
     api("/api/model-report"), api("/api/action-plan"), api("/api/budget-plan"), api("/api/value-portrait"), api("/api/campaigns")]);
+  Object.assign(S, {ov, mx, rep, plan, budget, portrait});
   CUR = ov.currency;
-  STAGE_ORDER = Object.keys(mx.stages);
+  S.stages = Object.entries(mx.stages);
+  S.stageRow = Object.fromEntries(ov.by_stage.map(s => [s.stage_name, s]));
+  S.cell = Object.fromEntries(mx.cells.map(c => [`${c.stage}|${c.value_tier}`, c]));
+  S.actionName = Object.fromEntries(plan.actions.map(a => [a.action_type, a.name]));
   const ds = status.dataset;
   $("#snapshot").textContent = `数据截至 ${ds.snapshot_date}`;
-  const dsEl = $("#dataset"); dsEl.hidden = false;
+  const dsEl = $("#dataset"); dsEl.hidden = false; dsEl.tabIndex = 0;
   bindTip(dsEl, `${esc(ds.name)}<br>${esc(ds.license)}`);
 
-  const kpis = [
-    ["会员总数", ov.total_members.toLocaleString(), `近 30 天活跃 ${ov.active_members_30d.toLocaleString()}`],
-    ["未来 90 天预计收入", moneyShort(ov.pred_revenue_next_90d), `客单价 ${money(ov.avg_order_value)} · 人均 ${ov.avg_orders_per_member.toFixed(1)} 次`],
-    ["流失风险金额", moneyShort(ov.total_value_at_risk), `高风险会员 ${ov.high_risk_members.toLocaleString()} 人`],
-    ["消费不及预期", (ov.shortfall_members || 0).toLocaleString(), "近期实际消费明显少于预期", "shortfall"],
-    ["会员运营回报", roiText(budget.overall_roi), `一年运营成本 ${moneyShort(budget.total_cost)}`, "budget"],
-  ];
-  $("#kpis").innerHTML = kpis.map(([l, v, s, act]) => {
-    const inner = `<div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div>`;
-    return act ? `<button class="kpi" data-act="${act}">${inner}</button>` : `<div class="kpi">${inner}</div>`;
-  }).join("");
-  $("#kpis").querySelector('[data-act="shortfall"]').onclick = loadShortfall;
-  $("#kpis").querySelector('[data-act="budget"]').onclick = () => { showTab("budget"); scrollTo({top: 0}); };
-  bindTip($("#kpis").children[2], `${ov.churn_horizon_days} 天内流失概率 ≥ ${pct(ov.high_risk_threshold)} 记为高风险；风险金额 = 流失概率 × 一年消费`);
-
-  renderMatrix(mx, ov.by_stage);
-  renderPlan(plan);
-  renderBudget(budget);
-  renderPortrait(portrait);
+  renderTasks(); renderKpis(); renderButterfly(); renderBubbles(); renderTrust();
+  renderPlan(); renderBudget(); renderCampaigns(camps.campaigns); renderInsight();
   $("#camp-segment").innerHTML = mx.cells.filter(c => c.stage !== "lost").map(c =>
-    `<option value="${esc(c.stage)}|${esc(c.value_tier)}">${esc(mx.stages[c.stage])} · ${esc(mx.tiers[c.value_tier])}（${c.members}）</option>`).join("");
-  renderCampaigns(camps.campaigns);
-  renderTrust(rep);
-  renderMemberValue(ov.member_vs_nonmember);
+    `<option value="${esc(c.stage)}|${esc(c.value_tier)}">${esc(mx.stages[c.stage])} · ${esc(mx.tiers[c.value_tier])}（${c.members.toLocaleString()}）</option>`).join("");
 }
 
-// 生命周期 × 价值分层，最右列合并原"生命周期结构"：人数占比 / 收入占比
-function renderMatrix(mx, byStage) {
-  const cell = Object.fromEntries(mx.cells.map(c => [`${c.stage}|${c.value_tier}`, c]));
-  const stageRow = Object.fromEntries(byStage.map(s => [s.stage_name, s]));
-  const risks = mx.cells.map(c => c.value_at_risk || 0).filter(v => v > 0).sort((a, b) => a - b);
+// ---------- 会员概览 ----------
+function renderTasks() {
+  const {plan, ov} = S, by = Object.fromEntries(plan.actions.map(a => [a.action_type, a]));
+  const ev = plan.upcoming_events[0];
+  const tasks = [];
+  if (by.manual) tasks.push(["本周必做", "orange", `联系 ${n0(by.manual.members)} 位重点会员`,
+    `导购人工回访，风险金额 ${moneyShort(by.manual.value_at_risk)}`, "打开回访名单", () => loadActionList("manual")]);
+  if (ev && by.promo_merge) tasks.push([ev.days_until ? `${ev.days_until} 天后` : "进行中", "blue", `${ev.name}：${n0(by.promo_merge.members)} 人并入大促推送`,
+    "大促前的自动挽留合并发送，确认权益与文案", "查看名单", () => loadActionList("promo_merge")]);
+  if (ov.shortfall_members) tasks.push(["新发现", "", `${n0(ov.shortfall_members)} 位会员消费不及预期`,
+    by.shortfall ? `${n0(by.shortfall.members)} 人已排进定向触达` : "近期实际消费明显少于预期", "查看名单", loadShortfall]);
+  if (by.replenish) tasks.push(["自动执行中", "green", `补货提醒 ${n0(by.replenish.members)} 人`,
+    "按个人购买节奏或品牌周期提醒", "查看名单", () => loadActionList("replenish")]);
+  $("#tasks").innerHTML = tasks.map(([tag, cls, t, d, cta], i) => `<div class="task"><span class="chip ${cls}">${esc(tag)}</span>
+    <div class="t">${esc(t)}</div><div class="d">${esc(d)}</div><button class="btn pri" data-task="${i}">${cta}</button></div>`).join("");
+  $("#tasks").querySelectorAll("[data-task]").forEach(b => b.onclick = tasks[b.dataset.task][5]);
+}
+
+function renderKpis() {
+  const {ov, budget, plan, mx, rep} = S;
+  const W = 260;
+  // 会员按阶段堆叠
+  let x = 0;
+  const stack = S.stages.map(([k, name], i) => { const r = S.stageRow[name]; if (!r) return "";
+    const w = r.member_share * W, out = `<rect class="kpi-seg" x="${x.toFixed(1)}" y="0" width="${Math.max(w - 1.5, 1).toFixed(1)}" height="10" rx="2" style="fill:var(--stage-${i + 1})"><title>${esc(name)} ${pct(r.member_share)}</title></rect>`;
+    x += w; return out; }).join("");
+  const idle = (S.stageRow["沉睡"]?.member_share || 0) + (S.stageRow["流失"]?.member_share || 0);
+  // 月度收入
+  const ss = plan.seasonality || {}, smax = Math.max(...Object.values(ss)) || 1, bw = W / 12;
+  const peak = Object.entries(ss).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([m]) => +m);
+  const season = Array.from({length: 12}, (_, i) => { const v = ss[i + 1] || 0, h = v / smax * 34;
+    return `<rect x="${(i * bw + 2).toFixed(1)}" y="${(34 - h).toFixed(1)}" width="${(bw - 4).toFixed(1)}" height="${h.toFixed(1)}" rx="2" style="fill:var(${peak.includes(i + 1) ? "--teal" : "--teal-l"})"><title>${i + 1} 月 ${pct(v)}</title></rect>`; }).join("");
+  // 风险按价值分层
+  const risk = Object.fromEntries(TIERS.map(([t]) => [t, mx.cells.filter(c => c.value_tier === t).reduce((s, c) => s + (c.value_at_risk || 0), 0)]));
+  const rAll = Object.values(risk).reduce((a, b) => a + b, 0) || 1;
+  x = 0;
+  const riskBar = TIERS.map(([t], i) => { const w = risk[t] / rAll * W, out = `<rect x="${x.toFixed(1)}" y="0" width="${Math.max(w - 1.5, 1).toFixed(1)}" height="10" rx="2" style="fill:var(--risk-${5 - i * 2})"></rect>`; x += w; return out; }).join("");
+  const cw = Math.max(budget.total_cost / budget.total_pred_gross_profit * W, 4);
+  const bt = rep.clv_backtest, err = bt.actual_total_revenue ? Math.abs(bt.pred_total_revenue - bt.actual_total_revenue) / bt.actual_total_revenue : null;
+  const svg = (inner, h) => `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" height="${h}">${inner}</svg>`;
+  $("#kpis").innerHTML = `
+    <div class="card kpi"><div class="l">会员总数</div><div class="v">${n0(ov.total_members)}</div>
+      <div class="s">近 30 天活跃 ${n0(ov.active_members_30d)} · 客单价 ${money(ov.avg_order_value)}</div>${svg(stack, 10)}
+      <div class="s">按生命周期分布 · 沉睡和流失占 ${pct(idle)}</div></div>
+    <div class="card kpi"><div class="l">未来 90 天预计收入</div><div class="v">${moneyShort(ov.pred_revenue_next_90d)}</div>
+      <div class="s">${err == null ? "按会员购买节奏预测" : `上季度同类预测与实际仅差 ${(err * 100).toFixed(1)}%`}</div>${svg(season, 34)}
+      <div class="s">各月收入占全年，深色为全年最旺的两个月</div></div>
+    <div class="card kpi"><div class="l">流失风险金额</div><div class="v orange">${moneyShort(ov.total_value_at_risk)}</div>
+      <div class="s">高风险会员 ${n0(ov.high_risk_members)} 人</div>${svg(riskBar, 10)}
+      <div class="s">${TIERS.map(([t, n]) => `${n} ${pct(risk[t] / rAll)}`).join(" · ")}</div></div>
+    <button class="card kpi" id="kpi-roi" style="text-align:left;cursor:pointer"><div class="l">会员运营回报 →</div><div class="v green">${roiText(budget.overall_roi)}</div>
+      <div class="s">一年投入 ${moneyShort(budget.total_cost)} → 预测毛利 ${moneyShort(budget.total_pred_gross_profit)}</div>
+      ${svg(`<rect x="0" y="0" width="${W}" height="10" rx="2" style="fill:var(--green-soft)"></rect><rect x="0" y="0" width="${cw.toFixed(1)}" height="10" rx="2" style="fill:var(--green)"></rect>`, 10)}
+      <div class="s">深色为投入，浅色为预测毛利</div></button>`;
+  $("#kpi-roi").onclick = () => { showTab("budget"); scrollTo({top: 0}); };
+  bindTip($("#kpis").children[2], `${ov.churn_horizon_days} 天内流失概率 ≥ ${pct(ov.high_risk_threshold)} 记为高风险；风险金额 = 流失概率 × 一年消费`);
+}
+
+function renderButterfly() {
+  const rows = S.stages.map(([k, name]) => ({k, ...S.stageRow[name]})).filter(r => r.members);
+  const W = 720, rowH = 44, top = 30, label = 96, half = (W - label) / 2, H = top + rowH * rows.length;
+  const mx = Math.max(...rows.map(r => Math.max(r.member_share, r.revenue_share))) || 1;
+  const best = rows.reduce((a, b) => (b.revenue_share - b.member_share > a.revenue_share - a.member_share ? b : a));
+  let svg = `<text x="${half - 8}" y="14" text-anchor="end" font-size="12" class="t-muted">人数占比</text>
+    <text x="${half + label + 8}" y="14" font-size="12" class="t-muted">收入占比</text>`;
+  rows.forEach((r, i) => {
+    const y = top + i * rowH, lw = r.member_share / mx * (half - 110), rw = r.revenue_share / mx * (half - 60);
+    svg += `<g class="hit" data-stage="${esc(r.k)}">
+      <rect class="${r === best ? "hl" : ""}" x="0" y="${y - 4}" width="${W}" height="${rowH - 6}" rx="8" style="${r === best ? "" : "fill:transparent"}"></rect>
+      <rect class="shape" x="${(half - lw).toFixed(1)}" y="${y + 5}" width="${lw.toFixed(1)}" height="22" rx="4" style="fill:var(--blue)"></rect>
+      <text x="${(half - lw - 8).toFixed(1)}" y="${y + 21}" text-anchor="end" font-size="13" class="t-strong">${pct(r.member_share)}</text>
+      <text x="${(half - lw - 48).toFixed(1)}" y="${y + 21}" text-anchor="end" font-size="12" class="t-muted">${n0(r.members)} 人</text>
+      <text x="${half + label / 2}" y="${y + 21}" text-anchor="middle" font-size="13" class="${r === best ? "t-strong" : ""}">${esc(r.stage_name)}</text>
+      <rect class="shape" x="${half + label}" y="${y + 5}" width="${rw.toFixed(1)}" height="22" rx="4" style="fill:var(--teal)"></rect>
+      <text x="${(half + label + rw + 8).toFixed(1)}" y="${y + 21}" font-size="13" class="t-strong">${pct(r.revenue_share)}</text></g>`;
+  });
+  $("#butterfly").innerHTML = `<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}">${svg}</svg></div>`;
+  bindHits($("#butterfly"), d => { const r = rows.find(x => x.k === d.stage);
+    return `<b>${esc(r.stage_name)}</b><br>人数 ${n0(r.members)}（${pct(r.member_share)}）<br>累计收入 ${money(r.revenue)}（${pct(r.revenue_share)}）<br>流失风险金额 ${money(r.value_at_risk)}<br><span style="opacity:.7">点击查看名单</span>`; },
+    d => loadStage(d.stage));
+  const idle = rows.filter(r => ["dormant", "lost"].includes(r.k));
+  $("#butterfly-note").innerHTML = `<b>读图：</b>${esc(best.stage_name)} ${pct(best.member_share)} 的会员贡献了 ${pct(best.revenue_share)} 的收入` +
+    (idle.length ? `；${idle.map(r => r.stage_name).join(" + ")}占了 ${pct(idle.reduce((s, r) => s + r.member_share, 0))} 的会员，收入只有 ${pct(idle.reduce((s, r) => s + r.revenue_share, 0))}。` : "。");
+}
+
+function riskLevels() {
+  const risks = S.mx.cells.map(c => c.value_at_risk || 0).filter(v => v > 0).sort((a, b) => a - b);
   const q = p => risks[Math.floor(p * (risks.length - 1))] || 0;
   const cuts = [q(.2), q(.4), q(.6), q(.8)];
-  const level = v => !v ? 0 : 1 + cuts.filter(c => v > c).length;  // 1..5
-  const maxShare = Math.max(...byStage.map(s => Math.max(s.member_share, s.revenue_share))) || 1;
-  let html = `<tr><th></th>${TIER_ORDER.map(t => `<th>${esc(mx.tiers[t])}</th>`).join("")}<th style="text-align:left;padding-left:12px">阶段合计</th></tr>`;
-  for (const s of STAGE_ORDER) {
-    html += `<tr><th class="row-h">${esc(mx.stages[s])}</th>`;
-    for (const t of TIER_ORDER) {
-      const c = cell[`${s}|${t}`];
-      if (!c) { html += `<td><button disabled><span class="muted">—</span></button></td>`; continue; }
-      const lv = level(c.value_at_risk);
-      const bg = lv ? `var(--seq-${lv})` : "var(--surface-2)";
-      html += `<td><button data-stage="${s}" data-tier="${t}" class="${lv >= 4 ? "dark-cell" : ""}" style="background:${bg}">
-        <div class="n">${c.members.toLocaleString()}</div><div class="r">${moneyShort(c.value_at_risk)}</div></button></td>`;
-    }
-    const r = stageRow[mx.stages[s]];
-    html += r ? `<td class="total" data-stage-total="${esc(s)}"><div class="n">${r.members.toLocaleString()} 人</div>
-      <div class="share"><span>人数</span><i style="width:${(r.member_share / maxShare * 100).toFixed(0)}%"></i><span>${pct(r.member_share)}</span></div>
-      <div class="share"><span>收入</span><i class="rev" style="width:${(r.revenue_share / maxShare * 100).toFixed(0)}%"></i><span>${pct(r.revenue_share)}</span></div></td>` : "<td></td>";
-    html += "</tr>";
-  }
-  $("#matrix").innerHTML = html;
-  $("#matrix").querySelectorAll("button[data-stage]").forEach(b => {
-    const c = cell[`${b.dataset.stage}|${b.dataset.tier}`];
-    bindTip(b, `<b>${esc(mx.stages[c.stage])} · ${esc(mx.tiers[c.value_tier])}</b><br>${c.members.toLocaleString()} 人 · 平均流失概率 ${pct(c.avg_churn_prob)}<br>风险金额 ${money(c.value_at_risk)}<br>策略：${esc(c.strategy)}`);
-    b.addEventListener("click", () => {
-      $("#matrix").querySelectorAll("button.selected").forEach(x => x.classList.remove("selected"));
-      b.classList.add("selected");
-      loadSegment(b.dataset.stage, b.dataset.tier);
+  return v => !v ? 0 : 1 + cuts.filter(c => v > c).length;
+}
+
+function renderBubbles() {
+  const W = 500, lx = 78, top = 28, rowH = 46, cw = (W - lx) / 3, H = top + rowH * S.stages.length;
+  const lvl = riskLevels(), mxm = Math.max(...S.mx.cells.map(c => c.members));
+  let svg = TIERS.map(([, n], j) => `<text x="${lx + cw * j + cw / 2}" y="14" text-anchor="middle" font-size="12" class="t-muted">${n}</text>`).join("");
+  S.stages.forEach(([s, name], i) => {
+    const y = top + i * rowH + rowH / 2;
+    svg += `<text x="0" y="${y + 4}" font-size="13">${esc(name)}</text>`;
+    TIERS.forEach(([t], j) => {
+      const c = S.cell[`${s}|${t}`]; if (!c) return;
+      const r = 5 + Math.sqrt(c.members / mxm) * 17, x = lx + cw * j + cw / 2;
+      svg += `<g class="hit" data-stage="${s}" data-tier="${t}"><circle class="shape" cx="${x.toFixed(1)}" cy="${y}" r="${r.toFixed(1)}" style="fill:var(--risk-${lvl(c.value_at_risk)})"></circle>
+        <text x="${(x + r + 6).toFixed(1)}" y="${y + 4}" font-size="11" class="t-muted">${n0(c.members)}</text></g>`;
     });
   });
-  $("#matrix").querySelectorAll("td[data-stage-total]").forEach(td => {
-    const r = stageRow[mx.stages[td.dataset.stageTotal]];
-    bindTip(td, `<b>${esc(r.stage_name)}</b><br>人数 ${r.members.toLocaleString()}（${pct(r.member_share)}）<br>累计收入 ${money(r.revenue)}（${pct(r.revenue_share)}）<br>流失风险金额 ${money(r.value_at_risk)}`);
+  $("#bubbles").innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}">${svg}</svg>`;
+  bindHits($("#bubbles"), d => { const c = S.cell[`${d.stage}|${d.tier}`];
+    return `<b>${esc(S.mx.stages[c.stage])} · ${esc(S.mx.tiers[c.value_tier])}</b><br>${n0(c.members)} 人 · 平均流失概率 ${pct(c.avg_churn_prob)}<br>风险金额 ${money(c.value_at_risk)}<br>策略：${esc(c.strategy)}`; },
+    d => loadSegment(d.stage, d.tier));
+}
+
+// 只用业务语言讲"当时预测 vs 后来实际"
+function renderTrust() {
+  const r = S.rep, bt = r.clv_backtest, cv = r.churn_validation;
+  $("#trust").innerHTML = `<div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap">
+    <div><h2 style="font-size:16px;margin:0">预测靠谱吗</h2><div class="muted" style="font-size:12px">用历史数据回看当时的预测</div></div>
+    <div><span class="chip green">准</span> ${esc(bt.calibration_end)} 起 90 天预测收入 <b>${moneyShort(bt.pred_total_revenue)}</b>，实际 <b>${moneyShort(bt.actual_total_revenue)}</b></div>
+    <div><span class="chip green">准</span> 判定风险最高的 10% 会员里 <b>${pct(cv.top10_precision)}</b> 后来确实流失（整体 ${pct(cv.churn_rate)}）
+      <span class="info" data-tip="流失：${esc(r.churn_definition)}">?</span></div></div>`;
+  const i = $("#trust .info"); i.tabIndex = 0; bindTip(i, esc(i.dataset.tip));
+}
+
+// ---------- 行动计划 ----------
+const LANES = [["本周必做", "orange", ["manual", "manual_queue", "shortfall"]], ["自动执行", "blue", ["replenish", "promo_merge", "auto"]], ["暂不打扰", "", ["wait", "promo_only"]]];
+function renderPlan() {
+  const a = S.plan, by = Object.fromEntries(a.actions.map(x => [x.action_type, x]));
+  const placed = new Set(LANES.flatMap(l => l[2]));
+  const lanes = LANES.map(l => [...l]);
+  a.actions.filter(x => !placed.has(x.action_type)).forEach(x => lanes[1][2].push(x.action_type));  // 新增类型归到自动执行
+  const mxn = Math.max(...a.actions.map(x => x.members)) || 1;
+  $("#lanes").innerHTML = lanes.map(([title, cls, keys]) => {
+    const items = keys.map(k => by[k]).filter(Boolean);
+    return `<div class="lane"><h3>${title} <span class="chip ${cls}">${n0(items.reduce((s, x) => s + x.members, 0))} 人</span></h3>
+      ${items.map(x => `<button class="lane-item" data-type="${esc(x.action_type)}"><div class="row"><span class="t">${esc(x.name)}</span><span class="t">${n0(x.members)} 人</span></div>
+        <div class="row m"><span>风险金额 ${moneyShort(x.value_at_risk)}</span><span>名单 ›</span></div>
+        <div class="bar"><i style="width:${(x.members / mxn * 100).toFixed(0)}%"></i></div></button>`).join("") || `<div class="empty">暂无</div>`}</div>`;
+  }).join("");
+  $("#lanes").querySelectorAll(".lane-item").forEach(b => b.onclick = () => loadActionList(b.dataset.type));
+
+  // 导购排期：每周产能柱，超出可排周数的部分转自动触达
+  const mn = a.manual, cp = a.contact_policy, weeks = Math.max(mn.weeks_to_clear, 1), cap = mn.capacity_per_week || 1;
+  $("#cap-sub").textContent = `${n0(mn.demand)} 人需要人工跟进，每周可跟进 ${cap} 人`;
+  const W = 480, H = 150, bw = W / weeks; let rem = mn.demand, svg = "";
+  for (let i = 0; i < weeks; i++) {
+    const v = Math.min(cap, rem); rem -= v;
+    const h = v / cap * 84, x = i * bw, inWin = i < mn.max_weeks;
+    svg += `<rect x="${(x + 8).toFixed(1)}" y="${(118 - h).toFixed(1)}" width="${(bw - 16).toFixed(1)}" height="${h.toFixed(1)}" rx="5" style="fill:var(${inWin ? "--blue" : "--grey-bar"})"></rect>
+      <text x="${(x + bw / 2).toFixed(1)}" y="${(112 - h).toFixed(1)}" text-anchor="middle" font-size="11" class="t-muted">${v}</text>
+      <text x="${(x + bw / 2).toFixed(1)}" y="140" text-anchor="middle" font-size="12">第 ${i + 1} 周</text>`;
+  }
+  if (weeks > mn.max_weeks) { const xs = mn.max_weeks * bw;
+    svg += `<line x1="${xs}" y1="2" x2="${xs}" y2="122" style="stroke:var(--orange)" stroke-dasharray="4 3"></line>
+      <text x="${xs + 6}" y="12" font-size="11" class="t-orange">超出 ${mn.max_weeks} 周 → 转自动触达</text>`; }
+  $("#capacity").innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}">${svg}</svg>`;
+  $("#cap-stats").innerHTML = `<div class="stat flat"><div class="l">前 ${mn.max_weeks} 周排进</div><div class="v">${n0(mn.scheduled)} 人</div></div>
+    <div class="stat flat"><div class="l">转自动触达</div><div class="v">${n0(mn.overflow_to_auto)} 人</div></div>`;
+
+  // 大促节奏：月度收入柱 + 档期带
+  const ss = a.seasonality || {}, smax = Math.max(...Object.values(ss)) || 1;
+  const SW = 700, SH = 210, base = SH - 24, barH = 96, mw = SW / 12;
+  let s2 = "";
+  for (let i = 0; i < 12; i++) {
+    const v = ss[i + 1] || 0, h = v / smax * barH, x = i * mw;
+    s2 += `<rect x="${(x + 6).toFixed(1)}" y="${(base - h).toFixed(1)}" width="${(mw - 12).toFixed(1)}" height="${h.toFixed(1)}" rx="4" style="fill:var(${v >= 0.09 ? "--teal" : "--teal-l"})"></rect>
+      <text x="${(x + mw / 2).toFixed(1)}" y="${(base - h - 6).toFixed(1)}" text-anchor="middle" font-size="11" class="t-muted">${pct(v)}</text>
+      <text x="${(x + mw / 2).toFixed(1)}" y="${SH - 6}" text-anchor="middle" font-size="12">${i + 1} 月</text>`;
+  }
+  const pos = d => { const m = +d.slice(5, 7), day = +d.slice(8, 10); return (m - 1 + (day - 1) / 31) * mw; };
+  a.upcoming_events.forEach((e, k) => {
+    const x0 = pos(e.start), x1 = Math.max(pos(e.end), x0 + 10), y = 4 + (k % 2) * 30;
+    s2 += `<rect x="${x0.toFixed(1)}" y="${y}" width="${(x1 - x0).toFixed(1)}" height="22" rx="6" style="fill:var(--orange-soft);stroke:var(--orange)"></rect>
+      <text x="${(x0 + 8).toFixed(1)}" y="${y + 15}" font-size="11" class="t-orange">${esc(e.name)} · ${e.days_until ? e.days_until + " 天后" : "进行中"}</text>`;
   });
-  $("#matrix-legend").innerHTML = `流失风险金额 低 ${[1,2,3,4,5].map(i => `<i style="background:var(--seq-${i})"></i>`).join("")} 高`;
+  $("#season").innerHTML = `<svg class="chart" viewBox="0 0 ${SW} ${SH}">${s2}</svg>`;
+  $("#season-sub").textContent = `各月收入占全年 · 橙色为大促档期，大促前 ${cp.promo_quiet_days} 天的自动挽留并入大促`;
+  $("#rules").textContent = `触达规则：每人每周最多 ${cp.max_touches_per_week} 次、每月 ${cp.max_touches_per_month} 次 · 补货窗口内 ${n0(a.replenishment.in_window)} 人 · 价格敏感会员占 ${pct(a.price_sensitive_share)}，只有他们拿让利型权益`;
 }
 
-function renderPlan(a) {
-  const maxN = Math.max(...a.actions.map(x => x.members)) || 1;
-  $("#plan-actions").innerHTML = `<tr><th>动作</th><th>人数</th><th class="num">风险金额</th><th></th></tr>` +
-    a.actions.map(x => `<tr class="click" data-type="${esc(x.action_type)}"><td>${esc(x.name)}</td>
-      <td><div class="inbar"><i style="width:${Math.max(2, x.members / maxN * 80).toFixed(0)}px"></i>${x.members.toLocaleString()}</div></td>
-      <td class="num">${moneyShort(x.value_at_risk)}</td><td class="row-go">名单 ›</td></tr>`).join("");
-  $("#plan-actions").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => loadActionList(r.dataset.type)));
-  const mn = a.manual, cp = a.contact_policy;
-  const stat = (l, v) => `<div class="stat"><div class="label">${l}</div><div class="value">${v}</div></div>`;
-  $("#plan-capacity").innerHTML = stat("需人工跟进", `${mn.demand.toLocaleString()} 人`) + stat("每周可跟进", `${mn.capacity_per_week} 人`)
-    + stat("全部排完", `${mn.weeks_to_clear} 周`);
-  $("#plan-rules").innerHTML = `
-    <li>前 ${mn.max_weeks} 周排进 <b>${mn.scheduled.toLocaleString()}</b> 人，其余 <b>${mn.overflow_to_auto.toLocaleString()}</b> 人转自动触达</li>
-    <li>补货窗口内 <b>${a.replenishment.in_window.toLocaleString()}</b> 人，按个人节奏或品牌周期提醒</li>
-    <li>每人每周最多 <b>${cp.max_touches_per_week}</b> 次、每月 <b>${cp.max_touches_per_month}</b> 次；大促前 ${cp.promo_quiet_days} 天内的自动挽留并入大促</li>
-    <li>价格敏感会员占 <b>${pct(a.price_sensitive_share)}</b>，只有他们拿让利型权益</li>`;
-  $("#plan-events").innerHTML = a.upcoming_events.length
-    ? a.upcoming_events.map(e => `<li><span>${esc(e.name)}</span><span class="muted">${esc(e.start.slice(5))} 起 · ${e.days_until ? e.days_until + " 天后" : "进行中"}</span></li>`).join("")
-    : `<li class="muted">暂无大促档期</li>`;
-  const ss = a.seasonality || {}, months = Array.from({length: 12}, (_, i) => i + 1), mx = Math.max(...months.map(m => ss[m] || 0)) || 1;
-  const season = $("#season"); season.innerHTML = "";
-  months.forEach(m => { const d = document.createElement("div"); d.style.height = `${((ss[m] || 0) / mx * 100).toFixed(0)}%`;
-    bindTip(d, `${m} 月：收入占全年 ${pct(ss[m])}`); season.appendChild(d); });
-  $("#season-x").innerHTML = months.map(m => `<span>${m}</span>`).join("");
-}
-
-const measuredText = m => !m ? `<span class="muted">待验证</span>` : `${roiText(m.incremental_roi)}${m.significant ? "" : `<span class="tag">仅供参考</span>`}`;
-
-function renderBudget(b) {
-  const stat = (l, v) => `<div class="stat"><div class="label">${l}</div><div class="value">${v}</div></div>`;
+// ---------- 预算与活动 ----------
+let roiAll = false;
+const measuredText = m => !m ? `<span class="muted">待验证</span>` : `${roiText(m.incremental_roi)}${m.significant ? "" : ` <span class="chip">仅供参考</span>`}`;
+function renderBudget() {
+  const b = S.budget;
+  const stat = (l, v, cls = "") => `<div class="stat"><div class="l">${l}</div><div class="v ${cls}">${v}</div></div>`;
   $("#budget-stats").innerHTML = stat("一年运营成本", moneyShort(b.total_cost)) + stat("会员预测毛利", moneyShort(b.total_pred_gross_profit))
-    + stat("整体回报", roiText(b.overall_roi)) + stat("高价值会员占成本 / 毛利", `${pct(b.high_value_cost_share)} / ${pct(b.high_value_profit_share)}`)
-    + stat("羊毛党不发券", `${b.deal_hunters_no_coupon.toLocaleString()} / ${b.deal_hunters.toLocaleString()} 人`)
-    + stat("回报为负的会员", `${b.negative_roi_members.toLocaleString()} 人`);
-  $("#budget-rows").innerHTML = `<tr><th>人群</th><th class="num">人数</th><th class="num">人均成本</th><th class="num">预测毛利</th><th class="num">预测回报</th><th class="num">活动实测</th><th>建议</th></tr>` +
-    b.rows.map(r => `<tr class="click" data-stage="${esc(r.stage)}" data-tier="${esc(r.value_tier)}"><td>${esc(r.segment)}</td>
-      <td class="num">${r.members.toLocaleString()}</td><td class="num">${money(r.cost_per_member)}</td><td class="num">${moneyShort(r.pred_gross_profit)}</td>
-      <td class="num">${roiText(r.roi)}</td><td class="num">${measuredText(r.measured)}</td>
-      <td class="reasons">${esc(r.advice.replace(/（规则）/g, ""))}${r.deal_hunters_no_coupon ? `；羊毛党 ${r.deal_hunters_no_coupon} 人不发券` : ""}</td></tr>`).join("");
-  $("#budget-rows").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => loadSegment(r.dataset.stage, r.dataset.tier)));
+    + stat("整体回报", roiText(b.overall_roi), "green") + stat("羊毛党不发券", `${n0(b.deal_hunters_no_coupon)} 人`)
+    + stat("回报为负的会员", `${n0(b.negative_roi_members)} 人`, "orange");
+
+  // 散点：人均成本 × 预测回报，圆大小 = 人数
+  const rows = b.rows, W = 780, H = 360, pl = 52, pb = 40, pt = 12, pr = 24;
+  const xmax = Math.ceil(Math.max(...rows.map(r => r.cost_per_member)) / 50) * 50 || 50;
+  const ymax = Math.ceil(Math.max(...rows.map(r => r.roi || 0)) / 40) * 40 || 40;
+  const X = v => pl + v / xmax * (W - pl - pr), Y = v => H - pb - v / ymax * (H - pb - pt);
+  const mxm = Math.max(...rows.map(r => r.members));
+  let svg = "";
+  for (let v = 0; v <= ymax; v += 40) svg += `<line class="grid-line" x1="${pl}" y1="${Y(v)}" x2="${W - pr}" y2="${Y(v)}"></line><text x="${pl - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" class="t-muted">${v} 倍</text>`;
+  for (let v = 0; v <= xmax; v += 50) svg += `<text x="${X(v)}" y="${H - pb + 18}" text-anchor="middle" font-size="11" class="t-muted">${CUR === "CNY" ? "¥" : "$"}${v}</text>`;
+  svg += `<text x="${(W + pl) / 2}" y="${H - 4}" text-anchor="middle" font-size="12">人均一年运营成本</text>`;
+  const sorted = [...rows].sort((a, z) => z.members - a.members);
+  const labeled = new Set([rows.reduce((a, z) => z.roi > a.roi ? z : a), rows.reduce((a, z) => z.cost_per_member > a.cost_per_member ? z : a),
+    rows.reduce((a, z) => z.roi < a.roi ? z : a), sorted[0]].map(r => r.segment));
+  const fill = {high: "--blue-d", mid: "--blue-m", low: "--blue-l"};
+  sorted.forEach(r => {
+    const rad = 4 + Math.sqrt(r.members / mxm) * 22, x = X(r.cost_per_member), y = Y(r.roi || 0), right = x > W - 220;
+    svg += `<g class="hit" data-stage="${esc(r.stage)}" data-tier="${esc(r.value_tier)}"><circle class="shape" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" style="fill:var(${fill[r.value_tier]});fill-opacity:.8;stroke:var(--surface-1);stroke-width:1.5"></circle>
+      ${labeled.has(r.segment) ? `<text x="${(right ? x - rad - 6 : x + rad + 6).toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="${right ? "end" : "start"}" font-size="12" class="t-strong">${esc(r.segment)}</text>` : ""}</g>`;
+  });
+  $("#scatter").innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">预测回报（倍）</div><svg class="chart" viewBox="0 0 ${W} ${H}">${svg}</svg>`;
+  const rowOf = d => rows.find(r => r.stage === d.stage && r.value_tier === d.tier);
+  bindHits($("#scatter"), d => { const r = rowOf(d);
+    return `<b>${esc(r.segment)}</b><br>${n0(r.members)} 人 · 人均成本 ${money(r.cost_per_member)}<br>预测毛利 ${moneyShort(r.pred_gross_profit)} · 回报 ${roiText(r.roi)}<br>建议：${esc(r.advice.replace(/（规则）/g, ""))}`; },
+    d => loadSegment(d.stage, d.tier));
+  renderRoiTable();
 }
+
+function renderRoiTable() {
+  const rows = [...S.budget.rows].sort((a, z) => a.roi - z.roi), show = roiAll ? rows : rows.slice(0, 5);
+  const mx = Math.max(...rows.map(r => r.roi)) || 1;
+  $("#roi-title").textContent = roiAll ? `全部 ${rows.length} 类人群` : "回报最低的 5 类人群";
+  $("#roi-toggle").textContent = roiAll ? "只看最低 5 类" : `全部 ${rows.length} 类 ›`;
+  $("#roi-rows").innerHTML = `<tr><th>人群</th><th class="num">人数</th><th>预测回报</th><th>活动实测</th><th>建议</th></tr>` +
+    show.map(r => `<tr class="click" data-stage="${esc(r.stage)}" data-tier="${esc(r.value_tier)}" tabindex="0"><td class="nowrap">${esc(r.segment)}</td>
+      <td class="num">${n0(r.members)}</td><td><div class="roi-cell"><div class="bar green"><i style="width:${(r.roi / mx * 100).toFixed(0)}%"></i></div>${roiText(r.roi)}</div></td>
+      <td class="nowrap">${measuredText(r.measured)}</td>
+      <td class="reasons">${esc(r.advice.replace(/（规则）/g, ""))}${r.deal_hunters_no_coupon ? `；羊毛党 ${r.deal_hunters_no_coupon} 人不发券` : ""}</td></tr>`).join("");
+  $("#roi-rows").querySelectorAll("tr.click").forEach(r => {
+    r.onclick = () => loadSegment(r.dataset.stage, r.dataset.tier);
+    r.onkeydown = e => { if (e.key === "Enter") r.onclick(); };
+  });
+}
+$("#roi-toggle").onclick = () => { roiAll = !roiAll; renderRoiTable(); };
 
 function renderCampaigns(list) {
-  $("#camp-rows").innerHTML = list.length ? `<tr><th>活动</th><th>人群</th><th>周期</th><th class="num">活动组 / 对照组</th><th class="num">每人额外消费</th><th class="num">实测回报</th><th>结论</th><th></th></tr>` +
+  if (!list.length) {
+    $("#camp-body").innerHTML = `<div class="grid g3 steps3">
+      <div class="stat flat"><div class="l">① 选人群和权益</div><div class="v">系统按风险金额分层，随机留出一部分会员作对照组</div></div>
+      <div class="stat flat"><div class="l">② 活动执行</div><div class="v">对照组在活动期间不触达，其他进行中的活动会自动避开</div></div>
+      <div class="stat flat"><div class="l">③ 对比结果</div><div class="v">活动组比对照组多买了多少、这笔投入值不值</div></div></div>`;
+    return;
+  }
+  $("#camp-body").innerHTML = `<div class="scroll-x"><table class="tbl" id="camp-rows"><tr><th>活动</th><th>人群</th><th>周期</th><th class="num">活动组 / 对照组</th><th class="num">每人额外消费</th><th class="num">实测回报</th><th>结论</th><th></th></tr>` +
     list.map(c => { const r = c.result || {}, d = c.design;
-      return `<tr class="click" data-id="${esc(c.id)}"><td>${esc(c.name)}${c.mode === "replay" ? `<span class="tag">示例</span>` : ""}</td>
-        <td>${esc(c.stage_name || c.stage)} · ${esc(c.tier_name || c.value_tier)}</td><td class="reasons">${esc(c.start_date)} ~ ${esc(c.end_date)}</td>
-        <td class="num">${d.treat_members.toLocaleString()} / ${d.control_members.toLocaleString()}</td>
+      return `<tr class="click" data-id="${esc(c.id)}"><td>${esc(c.name)}${c.mode === "replay" ? ` <span class="chip">示例</span>` : ""}</td>
+        <td class="nowrap">${esc(c.stage_name || c.stage)} · ${esc(c.tier_name || c.value_tier)}</td><td class="reasons nowrap">${esc(c.start_date)} ~ ${esc(c.end_date)}</td>
+        <td class="num">${n0(d.treat_members)} / ${n0(d.control_members)}</td>
         <td class="num">${r.incremental_per_member == null ? "—" : money(r.incremental_per_member)}</td>
-        <td class="num">${roiText(r.incremental_roi)}${r.verdict && !r.significant ? `<span class="tag">仅供参考</span>` : ""}</td>
+        <td class="num nowrap">${roiText(r.incremental_roi)}${r.verdict && !r.significant ? ` <span class="chip">仅供参考</span>` : ""}</td>
         <td class="reasons">${esc(r.verdict || "未评估")}</td>
-        <td style="white-space:nowrap"><button class="btn small" data-eval="${esc(c.id)}">评估</button> <button class="btn small" data-del="${esc(c.id)}">删除</button></td></tr>`; }).join("")
-    : `<tr><td class="empty">还没有活动。新建活动时会自动随机留出对照组；也可以先看一个示例，了解怎么判断活动有没有效果。</td></tr>`;
-  $("#camp-rows").querySelectorAll("button[data-eval]").forEach(b => b.onclick = async e => { e.stopPropagation(); b.disabled = true;
+        <td class="nowrap"><button class="btn small" data-eval="${esc(c.id)}">评估</button> <button class="btn small" data-del="${esc(c.id)}">删除</button></td></tr>`; }).join("") + `</table></div>`;
+  const rows = $("#camp-rows");
+  rows.querySelectorAll("button[data-eval]").forEach(b => b.onclick = async e => { e.stopPropagation(); b.disabled = true;
     try { showCampaign(await api(`/api/campaigns/${b.dataset.eval}/evaluate`, {method: "POST"})); await refreshCampaigns(); } catch (err) { alert(err.message); } b.disabled = false; });
-  $("#camp-rows").querySelectorAll("button[data-del]").forEach(b => b.onclick = async e => { e.stopPropagation();
+  rows.querySelectorAll("button[data-del]").forEach(b => b.onclick = async e => { e.stopPropagation();
     if (!confirm("删除这个活动？对照组会员会恢复正常触达。")) return;
     await api(`/api/campaigns/${b.dataset.del}`, {method: "DELETE"}); $("#camp-detail").innerHTML = ""; await refreshCampaigns(); });
-  $("#camp-rows").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => showCampaign(list.find(c => c.id === r.dataset.id))));
+  rows.querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => showCampaign(list.find(c => c.id === r.dataset.id))));
 }
 
 async function refreshCampaigns() {
   const [camps, budget, plan] = await Promise.all([api("/api/campaigns"), api("/api/budget-plan"), api("/api/action-plan")]);
-  renderCampaigns(camps.campaigns); renderBudget(budget); renderPlan(plan);
+  Object.assign(S, {budget, plan});
+  renderCampaigns(camps.campaigns); renderBudget(); renderPlan(); renderTasks();
 }
 
+// 活动结果：两组对比条 + 结论
 function showCampaign(c) {
   const d = c.design, r = c.result;
   const bal = Object.entries(d.balance).map(([k, v]) => `${esc(k)} ${/概率/.test(k) ? pct(v.treat) : money(v.treat)} / ${/概率/.test(k) ? pct(v.control) : money(v.control)}`).join("；");
   let html = `<b>${esc(c.name)}</b>：${esc(c.action)}，每人投入 ${money(c.unit_cost)}（动作投入 + 权益 × 核销率）<br>
-    <span class="muted">两组会员底子相近（活动组 / 对照组）：${bal}。按目前人数，消费提升超过 ${pct(d.detectable_lift)} 才能稳定看出来；
-    想看出 5% 的提升，每组需要约 ${(d.per_group_for_5pct || 0).toLocaleString()} 人。${d.excluded_in_other_campaigns ? `已排除 ${d.excluded_in_other_campaigns} 位正在参加其他活动的会员。` : ""}</span>`;
+    <span class="muted">两组会员底子相近（活动组 / 对照组）：${bal}。按目前人数，消费提升超过 ${pct(d.detectable_lift)} 才能稳定看出来。
+    ${d.excluded_in_other_campaigns ? `已排除 ${d.excluded_in_other_campaigns} 位正在参加其他活动的会员。` : ""}</span>`;
   if (r && r.treat) {
-    const row = (n, x) => `<tr><td>${n}</td><td class="num">${x.members.toLocaleString()}</td><td class="num">${money(x.baseline_per_member)}</td>
-      <td class="num">${money(x.actual_per_member)}</td><td class="num">${money(x.gap_per_member)}</td><td class="num">${pct(x.purchase_rate)}</td></tr>`;
-    html += `<table class="list"><tr><th></th><th class="num">人数</th><th class="num">预期消费/人</th><th class="num">实际消费/人</th><th class="num">实际 − 预期</th><th class="num">到店率</th></tr>
-      ${row("活动组", r.treat)}${row("对照组", r.control)}</table>
+    const mx = Math.max(r.treat.actual_per_member, r.control.actual_per_member, r.treat.baseline_per_member, r.control.baseline_per_member) || 1;
+    const bar = (label, x, color) => `<div style="display:grid;grid-template-columns:64px minmax(0,1fr) 150px;gap:10px;align-items:center;margin:6px 0">
+      <span>${label}</span><div class="bar" style="margin:0;height:14px"><i style="height:14px;width:${(x.actual_per_member / mx * 100).toFixed(0)}%;background:var(${color})"></i></div>
+      <span class="num">实际 ${money(x.actual_per_member)} / 预期 ${money(x.baseline_per_member)}</span></div>`;
+    html += `<div style="margin:12px 0">${bar("活动组", r.treat, "--blue")}${bar("对照组", r.control, "--grey-bar")}</div>
       每人额外消费 <b>${money(r.incremental_per_member)}</b>（大概率在 ${money(r.ci95[0])} ~ ${money(r.ci95[1])} 之间）；
       额外毛利 ${money(r.incremental_gross_profit)}，额外成本 ${money(r.incremental_cost)}，实测回报 <b>${roiText(r.incremental_roi)}</b>。
-      ${r.significant ? `<span class="tag good">结果可信</span>` : `<span class="tag warn">差异可能只是偶然，暂不作为决策依据</span>`}
-      <br><b>结论：</b>${esc(r.verdict)}
-      ${r.note ? `<div class="muted" style="margin-top:6px">${esc(r.note)}</div>` : ""}`;
+      ${r.significant ? `<span class="chip green">结果可信</span>` : `<span class="chip orange">差异可能只是偶然，暂不作为决策依据</span>`}
+      <br><b>结论：</b>${esc(r.verdict)}${r.note ? `<div class="muted" style="margin-top:6px">${esc(r.note)}</div>` : ""}`;
   } else html += `<div class="muted" style="margin-top:6px">${esc(r?.note || "还没有评估：活动结束、数据更新后点「评估」。")}</div>`;
   $("#camp-detail").innerHTML = `<div class="camp-detail">${html}</div>`;
 }
@@ -595,68 +820,191 @@ $("#camp-form").onsubmit = async e => { e.preventDefault();
   try { const c = await api("/api/campaigns", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     $("#camp-form").hidden = true; showCampaign(c); await refreshCampaigns(); } catch (err) { alert(err.message); } };
 
-function renderPortrait(v) {
-  const p = v.portrait || {over_index: []}, acq = v.acquisition || {};
-  $("#portrait-tgi").innerHTML = `<tr><th>维度</th><th>特征</th><th class="num">在高价值会员中占比</th><th class="num">集中度</th></tr>` +
-    p.over_index.map(x => `<tr><td class="muted">${esc(x.dimension)}</td><td>${esc(x.value)}</td><td class="num">${pct(x.high_share)}</td><td class="num"><b>${Math.round(x.tgi)}</b></td></tr>`).join("");
-  const acqRows = rows => `<tr><th>来源</th><th class="num">人数</th><th class="num">首年人均</th><th class="num">现为高价值</th><th class="num">羊毛党</th></tr>` +
-    rows.map(x => `<tr><td>${esc(x.group)}</td><td class="num">${x.members.toLocaleString()}</td><td class="num">${money(x.first_year_spend)}</td>
-      <td class="num">${pct(x.high_share)}</td><td class="num">${pct(x.deal_hunter_share)}</td></tr>`).join("");
-  $("#acq-note").textContent = `${acq.cohort_note || ""}，整体首年人均消费 ${money(acq.overall?.first_year_spend)}`;
-  $("#acq-amount").innerHTML = acqRows(acq.by_first_amount || []);
-  $("#acq-brand").innerHTML = acqRows((acq.by_first_brand || []).slice(0, 8));
+// ---------- 价值洞察 ----------
+let acqMode = "amount";
+function renderInsight() {
+  const v = S.portrait, items = (v.portrait || {}).over_index || [];
+  // 集中度：以 100 为基线向右
+  if (items.length) {
+    const W = 600, rowH = 36, lw = 190, H = rowH * items.length + 26, mx = Math.max(...items.map(x => x.tgi));
+    const X = t => lw + (t - 60) * (W - lw - 50) / (mx - 60);
+    let svg = `<line x1="${X(100)}" y1="0" x2="${X(100)}" y2="${H - 20}" style="stroke:var(--text-muted)" stroke-dasharray="3 3"></line>
+      <text x="${X(100)}" y="${H - 4}" text-anchor="middle" font-size="11" class="t-muted">100 = 与整体持平</text>`;
+    items.forEach((x, i) => { const y = i * rowH;
+      svg += `<text x="0" y="${y + 21}" font-size="12" class="t-muted">${esc(x.dimension)}</text>
+        <text x="${lw - 12}" y="${y + 21}" text-anchor="end" font-size="13" class="t-strong" style="font-weight:400">${esc(x.value)}</text>
+        <rect x="${X(100)}" y="${y + 7}" width="${Math.max(X(x.tgi) - X(100), 2).toFixed(1)}" height="18" rx="4" style="fill:var(${x.tgi >= 150 ? "--blue" : "--blue-l"})"><title>在高价值会员中占 ${pct(x.high_share)}，在全体中占 ${pct(x.all_share)}</title></rect>
+        <text x="${(X(x.tgi) + 8).toFixed(1)}" y="${y + 21}" font-size="13" class="t-strong">${Math.round(x.tgi)}</text>`; });
+    $("#tgi").innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}">${svg}</svg>`;
+  } else $("#tgi").innerHTML = `<div class="empty">暂无明显集中的特征</div>`;
+
+  // 会员 vs 非会员：每项指标一对横条
+  const mv = S.ov.member_vs_nonmember;
+  if (mv && mv.member) {
+    $("#compare-card").hidden = false;
+    $("#compare-sub").textContent = `${mv.period[0]} 至 ${mv.period[1]} 的全部流水`;
+    const m = mv.member, n = mv.non_member;
+    const rows = [["收入", m.revenue, n.revenue, moneyShort], ["订单数", m.orders, n.orders, n0], ["客单价", m.aov, n.aov, money], ["件数/单", m.items_per_order, n.items_per_order, x => x.toFixed(1)]];
+    const W = 600, rowH = 58, lw = 70, bmax = W - lw - 100;
+    let svg = "";
+    rows.forEach(([name, a, b, f], i) => { const y = i * rowH, mx = Math.max(a, b) || 1;
+      svg += `<text x="0" y="${y + 26}" font-size="13">${name}</text>
+        <rect x="${lw}" y="${y + 6}" width="${(a / mx * bmax).toFixed(1)}" height="16" rx="4" style="fill:var(--blue)"></rect>
+        <text x="${(lw + a / mx * bmax + 8).toFixed(1)}" y="${y + 19}" font-size="12" class="t-strong">${f(a)}</text>
+        <rect x="${lw}" y="${y + 26}" width="${(b / mx * bmax).toFixed(1)}" height="16" rx="4" style="fill:var(--grey-bar)"></rect>
+        <text x="${(lw + b / mx * bmax + 8).toFixed(1)}" y="${y + 39}" font-size="12">${f(b)}</text>`; });
+    $("#compare").innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${rowH * rows.length}">${svg}</svg>`;
+    const notes = [];
+    notes.push(`会员客单价${m.aov >= n.aov ? "比非会员高" : "比非会员低"} ${pct(Math.abs(m.aov / n.aov - 1))}`);
+    if (m.items_per_order < n.items_per_order) notes.push("但每单件数更少，连带销售还有空间");
+    $("#compare-note").innerHTML = `<b>读图：</b>${notes.join("，")}。`;
+  }
+  renderAcq();
+
+  const hp = v.high_potential_new_members;
+  $("#potential").innerHTML = hp && hp.members ? `<div style="display:flex;flex-direction:column;gap:8px;justify-content:center;height:100%">
+      <span class="chip blue" style="align-self:flex-start">高潜新会员</span>
+      <div class="big-num">${n0(hp.members)} 人</div>
+      <div class="muted">入会不久、画像接近高价值会员，预测未来 3 年可贡献 ${moneyShort(hp.pred_ltv)}</div>
+      <div class="muted" style="font-size:12px">建议放进「新客期」的首次体验闭环里重点培育</div></div>`
+    : `<div class="empty">暂无高潜新会员</div>`;
 }
 
-// ---------- 名单侧拉 ----------
-const sheet = $("#sheet");
-sheet.querySelector(".close").onclick = () => sheet.close();
-sheet.addEventListener("click", e => { if (e.target === sheet) sheet.close(); });
-sheet.addEventListener("close", () => $("#matrix").querySelectorAll("button.selected").forEach(x => x.classList.remove("selected")));
+function renderAcq() {
+  const acq = S.portrait.acquisition || {}, overall = acq.overall?.first_year_spend || 0;
+  const rows = acqMode === "amount" ? (acq.by_first_amount || []) : (acq.by_first_brand || []).slice(0, 8);
+  $("#acq-sub").textContent = `${acq.cohort_note || ""} · 首年人均消费，虚线为整体平均 ${moneyShort(overall)}`;
+  document.querySelectorAll("[data-acq]").forEach(b => b.setAttribute("aria-pressed", b.dataset.acq === acqMode));
+  if (!rows.length) { $("#acq").innerHTML = `<div class="empty">暂无数据</div>`; return; }
+  const W = 760, rowH = 46, lw = 120, H = rowH * rows.length + 6, mx = Math.max(...rows.map(r => r.first_year_spend), overall) || 1;
+  const X = v => lw + v / mx * (W - lw - 220);
+  let svg = `<line x1="${X(overall)}" y1="0" x2="${X(overall)}" y2="${H}" style="stroke:var(--text-muted)" stroke-dasharray="3 3"></line>`;
+  rows.forEach((r, i) => { const y = i * rowH;
+    svg += `<text x="0" y="${y + 20}" font-size="13" class="t-strong" style="font-weight:400">${esc(r.group)}</text>
+      <text x="0" y="${y + 36}" font-size="11" class="t-muted">${n0(r.members)} 人</text>
+      <rect x="${lw}" y="${y + 9}" width="${(X(r.first_year_spend) - lw).toFixed(1)}" height="20" rx="4" style="fill:var(--teal)"></rect>
+      <text x="${(X(r.first_year_spend) + 8).toFixed(1)}" y="${y + 24}" font-size="13" class="t-strong">${moneyShort(r.first_year_spend)}</text>
+      <text x="${W - 4}" y="${y + 24}" text-anchor="end" font-size="12" class="t-blue">${pct(r.high_share)} 成高价值 · 羊毛党 ${pct(r.deal_hunter_share)}</text>`; });
+  $("#acq").innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}">${svg}</svg>`;
+}
+document.querySelectorAll("[data-acq]").forEach(b => b.onclick = () => { acqMode = b.dataset.acq; renderAcq(); });
 
-function renderList(list, title, hint, strategyHtml) {
-  $("#sheet-title").textContent = title;
-  $("#sheet-hint").textContent = hint;
-  $("#sheet-strategy").innerHTML = strategyHtml || "";
-  $("#sheet-list").innerHTML = list.members.length ? `<tr><th>会员</th><th class="num">距上次消费</th><th class="num">消费次数</th><th class="num">累计消费</th><th class="num">流失概率</th><th class="num">风险金额</th><th>流失信号</th><th>下一步</th></tr>` +
-    list.members.map(m => `<tr class="click" data-id="${esc(m.customer_id)}"><td>${esc(m.customer_id)}${m.value_shift ? `<span class="tag">${esc(m.value_shift)}</span>` : ""}</td>
-      <td class="num">${m.recency_days} 天</td><td class="num">${m.frequency}</td><td class="num">${money(m.monetary)}</td><td class="num">${pct(m.churn_prob)}</td><td class="num">${money(m.value_at_risk)}</td>
-      <td class="reasons">${esc(m.churn_reasons || "—")}</td><td class="reasons">${esc(m.next_action || "—")}${m.next_action_date ? `<br>${esc(m.next_action_date)}` : ""}</td></tr>`).join("")
-    : `<tr><td class="empty">这类人群暂时没有会员</td></tr>`;
-  $("#sheet-list").querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => openMember(r.dataset.id)));
+// ---------- 人群侧栏：名单 / 策略 / 算账 ----------
+const sheet = $("#sheet");
+const PAGE = 20;
+let Q = null;  // 当前名单的查询条件与已加载的会员
+$("#sheet-close").onclick = () => sheet.close();
+sheet.addEventListener("click", e => { if (e.target === sheet) sheet.close(); });
+document.querySelectorAll("#sheet-tabs button").forEach(b => b.onclick = () => showSheetTab(b.dataset.stab));
+function showSheetTab(name) {
+  document.querySelectorAll("#sheet-tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.stab === name));
+  document.querySelectorAll("[data-spanel]").forEach(p => p.hidden = p.dataset.spanel !== name);
+}
+
+const qs = params => new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== "")).toString();
+
+// opts: {crumb, title, chips, params, filters, strategyHtml, economicsHtml, segment}
+async function openSheet(opts) {
+  $("#sheet-crumb").textContent = opts.crumb || "";
+  $("#sheet-title").textContent = opts.title;
+  $("#sheet-chips").innerHTML = (opts.chips || []).map(([t, cls]) => `<span class="chip ${cls || ""}">${esc(t)}</span>`).join("");
+  $("#sheet-strategy").innerHTML = opts.strategyHtml || "";
+  $("#sheet-economics").innerHTML = opts.economicsHtml || "";
+  const hasMore = !!opts.strategyHtml;
+  document.querySelectorAll("#sheet-tabs button").forEach(b => b.hidden = b.dataset.stab !== "list" && !hasMore);
+  $("#sheet-tabs").hidden = !hasMore;
+  $("#sheet-campaign").hidden = !opts.segment;
+  $("#sheet-campaign").onclick = () => startCampaignFor(opts.segment);
+  Q = {base: opts.params, filter: null, members: [], filters: opts.filters || []};
+  renderFilters();
+  showSheetTab("list");
+  await loadPage(true);
   if (!sheet.open) sheet.showModal();
   sheet.scrollTop = 0;
 }
 
+function renderFilters() {
+  if (!Q.filters.length) { $("#sheet-filters").innerHTML = `<span class="muted">按风险金额排序</span>`; return; }
+  $("#sheet-filters").innerHTML = [["", "全部"], ...Q.filters].map(([k, label]) =>
+    `<button class="chip" data-f="${esc(k)}" aria-pressed="${(Q.filter || "") === k}">${esc(label)}</button>`).join("") + `<span class="muted">按风险金额排序</span>`;
+  $("#sheet-filters").querySelectorAll("[data-f]").forEach(b => b.onclick = () => { Q.filter = b.dataset.f || null; renderFilters(); loadPage(true); });
+}
+
+const currentParams = () => ({...Q.base, ...(Q.filter ? {action_type: Q.filter} : {})});
+async function loadPage(reset) {
+  if (reset) Q.members = [];
+  const params = currentParams();
+  const res = await api(`/api/members?${qs({...params, limit: PAGE, offset: Q.members.length})}`);
+  Q.members.push(...res.members); Q.matched = res.matched;
+  $("#sheet-export").href = `/api/members/export?${qs(params)}`;
+  renderSheetList();
+}
+
+function renderSheetList() {
+  const lvl = v => v >= .6 ? "--orange" : v >= .3 ? "--risk-2" : "--grey-bar";
+  $("#sheet-list").innerHTML = Q.members.length ? `<tr><th>会员</th><th class="num">距上次消费</th><th class="num">消费次数</th><th class="num">累计消费</th><th class="num">流失概率</th><th class="num">风险金额</th><th>主要信号</th><th>下一步</th></tr>` +
+    Q.members.map(m => `<tr class="click" data-id="${esc(m.customer_id)}" tabindex="0"><td class="nowrap"><span class="dot" style="background:var(${lvl(m.churn_prob)})"></span>${esc(m.customer_id)}${m.value_shift ? ` <span class="chip">${esc(m.value_shift)}</span>` : ""}</td>
+      <td class="num">${m.recency_days} 天</td><td class="num">${m.frequency}</td><td class="num">${money(m.monetary)}</td><td class="num">${pct(m.churn_prob)}</td><td class="num">${money(m.value_at_risk)}</td>
+      <td class="reasons">${esc(m.churn_reasons || "—")}</td><td class="reasons">${esc(m.next_action || "—")}${m.next_action_date ? `<br>${esc(m.next_action_date)}` : ""}</td></tr>`).join("")
+    : `<tr><td class="empty">这类人群暂时没有会员</td></tr>`;
+  $("#sheet-list").querySelectorAll("tr.click").forEach(r => { r.onclick = () => openMember(r.dataset.id); r.onkeydown = e => { if (e.key === "Enter") r.onclick(); }; });
+  const left = Q.matched - Q.members.length;
+  $("#sheet-more").innerHTML = `<span>已显示 ${n0(Q.members.length)} / 共 ${n0(Q.matched)} 人</span>` +
+    (left > 0 ? `<button class="btn small" id="load-more">再加载 ${Math.min(PAGE, left)} 人</button>` : "");
+  if (left > 0) $("#load-more").onclick = async e => { e.target.disabled = true; await loadPage(false); };
+}
+
 const CHANNEL = {manual: "导购人工（按风险金额排队）", auto: "自动触达", promo_only: "只在大促触达"};
+const nameToType = name => Object.entries(S.actionName).find(([, n]) => n === name)?.[0];
 
 async function loadSegment(stage, tier) {
-  const [st, list] = await Promise.all([
-    api(`/api/strategy?stage=${stage}&value_tier=${tier}`),
-    api(`/api/members?stage=${stage}&value_tier=${tier}&limit=15`),
-  ]);
-  const s = st.strategy;
-  const acts = Object.entries(st.next_actions || {}).map(([k, v]) => `${esc(k)} ${v.toLocaleString()}`).join("，");
-  const html = s ? `<div class="strategy"><h3>${esc(s.name)}</h3><div class="muted">${esc(s.goal)}</div>
-    <ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
-    <div><b>权益：</b>${(st.incentive_groups || []).map(g => `<br>${esc(g.group)}（${g.members.toLocaleString()} 人）：${esc(g.incentive)}`).join("")}</div>
-    <div class="meta"><div><b>渠道：</b>${esc(CHANNEL[s.channel] || s.channel || "—")}</div>
-      <div><b>单人成本上限：</b>人均 ${money(st.avg_cost_cap_per_member)}（预测年消费 × ${pct(s.cost_cap_pct)}）</div>
-      <div><b>考核：</b>${esc(s.kpi)}</div><div><b>频控：</b>${esc(s.guardrail)}</div></div>
-    ${acts ? `<div class="muted" style="margin-top:6px">下一步安排：${acts}</div>` : ""}
-    ${st.economics ? `<div class="muted">算账：一年运营成本 ${money(st.economics.real_cost)}，预测毛利 ${moneyShort(st.economics.pred_gross_profit)}，回报 ${roiText(st.economics.roi)}${st.economics.deal_hunters_no_coupon ? `；羊毛党 ${st.economics.deal_hunters_no_coupon} 人不发券` : ""}</div>` : ""}</div>` : "";
-  renderList(list, `${st.stage} · ${st.value_tier}`,
-    `${st.target_members.toLocaleString()} 人 · 风险金额 ${money(st.group_value_at_risk)} · 平均流失概率 ${pct(st.group_avg_churn_prob)} · 名单按风险金额排序`, html);
+  const st = await api(`/api/strategy?stage=${stage}&value_tier=${tier}`);
+  const s = st.strategy, e = st.economics;
+  const strategyHtml = s ? `<div class="strategy"><h3>${esc(s.name)}</h3><div class="muted">${esc(s.goal)}</div>
+      <ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul></div>
+    <dl class="kv"><dt>触达渠道</dt><dd>${esc(CHANNEL[s.channel] || s.channel || "—")}</dd>
+      <dt>权益</dt><dd>${(st.incentive_groups || []).map(g => `${esc(g.group)}（${n0(g.members)} 人）：${esc(g.incentive)}`).join("<br>") || "—"}</dd>
+      <dt>考核</dt><dd>${esc(s.kpi)}</dd><dt>频控</dt><dd>${esc(s.guardrail)}</dd>
+      <dt>下一步安排</dt><dd>${Object.entries(st.next_actions || {}).map(([k, v]) => `${esc(k)} ${n0(v)} 人`).join("，") || "—"}</dd></dl>` : "";
+  const economicsHtml = e ? `<div class="grid g3" style="margin-bottom:12px">
+      <div class="stat flat"><div class="l">一年运营成本</div><div class="v">${moneyShort(e.real_cost)}</div></div>
+      <div class="stat flat"><div class="l">预测毛利</div><div class="v">${moneyShort(e.pred_gross_profit)}</div></div>
+      <div class="stat flat"><div class="l">预测回报</div><div class="v green">${roiText(e.roi)}</div></div></div>
+    <dl class="kv"><dt>单人成本上限</dt><dd>人均 ${money(st.avg_cost_cap_per_member)}（预测年消费 × ${pct(s?.cost_cap_pct)}）</dd>
+      <dt>价格敏感会员</dt><dd>${n0(st.price_sensitive_members || 0)} 人</dd>
+      <dt>回报为负</dt><dd>${n0(e.negative_roi_members || 0)} 人</dd>
+      <dt>羊毛党不发券</dt><dd>${n0(e.deal_hunters_no_coupon || 0)} 人</dd></dl>` : "";
+  const filters = Object.keys(st.next_actions || {}).map(n => [nameToType(n), `${n} ${n0(st.next_actions[n])}`]).filter(([k]) => k);
+  await openSheet({crumb: `会员结构 › ${st.stage}`, title: `${st.stage} · ${st.value_tier}`,
+    chips: [[`${n0(st.target_members)} 人`], [`风险金额 ${moneyShort(st.group_value_at_risk)}`, "orange"], [`平均流失概率 ${pct(st.group_avg_churn_prob)}`]],
+    params: {stage, value_tier: tier}, filters: filters.length > 1 ? filters : [], strategyHtml, economicsHtml, segment: `${stage}|${tier}`});
+}
+
+async function loadStage(stage) {
+  const r = S.stageRow[S.mx.stages[stage]];
+  await openSheet({crumb: "谁在贡献收入", title: S.mx.stages[stage],
+    chips: [[`${n0(r.members)} 人`], [`收入占比 ${pct(r.revenue_share)}`, "blue"], [`风险金额 ${moneyShort(r.value_at_risk)}`, "orange"]],
+    params: {stage}});
 }
 
 async function loadActionList(type) {
-  const list = await api(`/api/members?action_type=${type}&limit=15`);
-  const name = $(`#plan-actions tr[data-type="${type}"] td`).textContent;
-  renderList(list, name, `${list.matched.toLocaleString()} 人 · 风险金额 ${money(list.matched_value_at_risk)} · 按风险金额排序`);
+  const a = S.plan.actions.find(x => x.action_type === type);
+  await openSheet({crumb: "行动计划", title: a ? a.name : S.actionName[type] || type,
+    chips: a ? [[`${n0(a.members)} 人`], [`风险金额 ${moneyShort(a.value_at_risk)}`, "orange"]] : [], params: {action_type: type}});
 }
 
 async function loadShortfall() {
-  const list = await api(`/api/members?shortfall=true&limit=15`);
-  renderList(list, "消费不及预期的会员", `${list.matched.toLocaleString()} 人 · 风险金额 ${money(list.matched_value_at_risk)} · 按风险金额排序`);
+  await openSheet({crumb: "会员概览", title: "消费不及预期的会员", chips: [[`${n0(S.ov.shortfall_members)} 人`, "orange"]], params: {shortfall: true}});
+}
+
+// 从侧栏直接为这群人发起活动：切到预算与活动，带入人群
+function startCampaignFor(segment) {
+  sheet.close(); showTab("budget");
+  $("#camp-form").hidden = false;
+  const sel = $("#camp-segment");
+  if ([...sel.options].some(o => o.value === segment)) sel.value = segment;
+  $("#camp-form").scrollIntoView({behavior: "smooth", block: "center"});
+  $("#camp-form [name=name]").focus();
 }
 
 // 会员详情里不展示的内部字段
@@ -670,7 +1018,7 @@ async function openMember(id) {
     .map(([k, v]) => `<dt>${esc(k.replace("用户 ROI", "回报"))}</dt><dd>${esc(fmt(k, v))}</dd>`).join("")}</dl>`;
   const sections = Object.entries(p).filter(([k, v]) => v && typeof v === "object" && !Array.isArray(v) && k !== "推荐策略");
   const s = p["推荐策略"];
-  $("#drawer").innerHTML = `<div class="dlg-h"><h3>会员 ${esc(p.customer_id)}</h3><button class="close" aria-label="关闭">×</button></div><div class="dlg-b">
+  $("#drawer").innerHTML = `<div class="modal-h"><h3>会员 ${esc(p.customer_id)}</h3><button class="btn icon close" aria-label="关闭">×</button></div><div class="modal-b">
     ${s ? `<div class="strategy"><h3>推荐：${esc(s.name)}</h3><ul>${s.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
       ${s.applied_incentive ? `<div><b>适用权益：</b>${esc(s.applied_incentive)}</div>` : ""}</div>` : ""}
     <h4>流失信号</h4><div class="reasons">${p["流失信号"].map(esc).join("<br>") || "暂无"}</div>
@@ -680,30 +1028,28 @@ async function openMember(id) {
 }
 $("#drawer").addEventListener("click", e => { if (e.target === $("#drawer")) $("#drawer").close(); });
 
-function renderMemberValue(v) {
-  if (!v || !v.member) return;
-  $("#member-value-card").hidden = false;
-  $("#member-value-period").textContent = `${v.period[0]} 至 ${v.period[1]} 的全部流水`;
-  const rows = [["收入占比", d => `${pct(d.revenue_share)}`], ["收入", d => moneyShort(d.revenue)], ["订单数", d => Math.round(d.orders).toLocaleString()],
-    ["客单价", d => money(d.aov)], ["件数/单", d => d.items_per_order.toFixed(1)]];
-  $("#member-value").innerHTML = `<tr><th></th><th>会员</th><th>非会员</th></tr>` +
-    rows.map(([n, f]) => `<tr><td>${n}</td><td>${f(v.member)}</td><td>${f(v.non_member)}</td></tr>`).join("");
+// ---------- 运营助手：浮动按钮 + 抽屉 ----------
+const chat = $("#chat"), fab = $("#fab");
+function setChat(open) {
+  chat.classList.toggle("open", open); fab.hidden = open; fab.setAttribute("aria-expanded", open);
+  if (open) { fab.classList.remove("unread"); setTimeout(() => $("#input").focus(), 50); } else fab.focus();
+}
+fab.onclick = () => setChat(true);
+$("#chat-close").onclick = () => setChat(false);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && chat.classList.contains("open") && !sheet.open && !$("#drawer").open) setChat(false); });
+
+const SUGGEST = {
+  overview: ["会员整体情况怎么样？", "哪些高价值会员有流失风险？", "预测靠谱吗？"],
+  plan: ["这周导购应该先联系谁？", "年货节前应该怎么安排触达？"],
+  budget: ["羊毛党要不要发券？", "给衰退预警的高价值会员设计一个挽留方案并算算账", "活动有没有带来额外消费？"],
+  insight: ["高价值会员是什么样的，拉新往哪倾斜？", "会员和非会员差在哪？"],
+};
+function renderSuggestions(tab) {
+  $("#chat-context").textContent = `正在看：${TABS[tab]}`;
+  $("#suggest").innerHTML = (SUGGEST[tab] || []).map(s => `<button type="button">${esc(s)}</button>`).join("");
+  $("#suggest").querySelectorAll("button").forEach(b => b.onclick = () => send(b.textContent));
 }
 
-// 只用业务语言讲"当时预测 vs 后来实际"，不展示算法与统计指标
-function renderTrust(r) {
-  const bt = r.clv_backtest, cv = r.churn_validation;
-  const err = bt.actual_total_revenue ? Math.abs(bt.pred_total_revenue - bt.actual_total_revenue) / bt.actual_total_revenue : null;
-  $("#trust").innerHTML = `
-    <div><div class="sub-h">消费预测（${esc(bt.calibration_end)} 起 90 天）</div>
-      预测收入 <b>${moneyShort(bt.pred_total_revenue)}</b>，实际 <b>${moneyShort(bt.actual_total_revenue)}</b>${err == null ? "" : `，相差 <b>${(err * 100).toFixed(1)}%</b>`}<br>
-      预测购买 <b>${Math.round(bt.pred_total_purchases).toLocaleString()}</b> 次，实际 <b>${bt.actual_total_purchases.toLocaleString()}</b> 次</div>
-    <div><div class="sub-h">流失预警（${esc(cv.valid_cutoff)} 起 ${cv.horizon_days} 天）</div>
-      判定风险最高的 10% 会员里，<b>${pct(cv.top10_precision)}</b> 后来确实流失（整体是 ${pct(cv.churn_rate)}）<br>
-      <span class="muted">流失：${esc(r.churn_definition)}</span></div>`;
-}
-
-// ---------- 对话 ----------
 function md(src) {
   const lines = esc(src).split("\n"); let out = "", list = false, table = [];
   const inline = s => s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
@@ -722,7 +1068,6 @@ function md(src) {
 }
 
 const SESSION = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
-const SUGGESTIONS = ["这周导购应该先联系谁？", "哪些高价值会员有流失风险？", "羊毛党要不要发券？", "高价值会员是什么样的，拉新往哪倾斜？", "给衰退预警的高价值会员设计一个挽留方案并算算账"];
 function addMsg(role, html) {
   const d = document.createElement("div"); d.className = `msg ${role}`;
   d.innerHTML = `<div class="bubble">${html}</div>`;
@@ -740,18 +1085,18 @@ function botBubble() {
   const paint = () => { frame = 0; el.answer.innerHTML = md(text); el.answer.classList.add("caret"); $("#msgs").scrollTop = 1e9; };
   const step = (cls, html) => { const s = document.createElement("div"); s.className = `step ${cls}`; s.innerHTML = `<span class="icon"></span>${html}`;
     el.steps.appendChild(s); $("#msgs").scrollTop = 1e9; return s; };
+  const finish = () => { clearInterval(tick); if (!chat.classList.contains("open")) fab.classList.add("unread"); };
   return {
     text(delta) { text += delta; if (!frame) frame = requestAnimationFrame(paint); },
     toolStart(e) { text = ""; el.answer.innerHTML = "";  // 查数前的过渡语不保留
       running = step("running", `<span class="verb">正在</span>${esc(e.label)}`); },
     toolEnd(e) { if (!running) return; running.className = `step ${e.ok ? "ok" : "fail"}`;
-      running.querySelector(".verb").textContent = e.ok ? "" : "未能";
-      running = null; },
+      running.querySelector(".verb").textContent = e.ok ? "" : "未能"; running = null; },
     reset() { text = ""; el.answer.innerHTML = ""; step("note", "正在重新核对数字…"); },
-    done(e) { clearInterval(tick); if (frame) cancelAnimationFrame(frame); el.waiting.textContent = "";
+    done(e) { finish(); if (frame) cancelAnimationFrame(frame); el.waiting.textContent = "";
       el.answer.classList.remove("caret"); el.answer.innerHTML = md(e.answer || text);
       el.waiting.outerHTML = `<div class="foot">用时 ${Math.round((Date.now() - started) / 1000)} 秒</div>`; },
-    fail(msg) { clearInterval(tick); el.waiting.textContent = ""; el.answer.classList.remove("caret");
+    fail(msg) { finish(); el.waiting.textContent = ""; el.answer.classList.remove("caret");
       el.answer.innerHTML += `<p class="muted">没能完成回答：${esc(msg)}，请稍后再试。</p>`; },
   };
 }
@@ -785,13 +1130,12 @@ async function send(text) {
   } catch (e) { bubble.fail(e.message); }
   $("#send").disabled = false;
 }
-$("#suggest").innerHTML = SUGGESTIONS.map(s => `<button type="button">${esc(s)}</button>`).join("");
-$("#suggest").querySelectorAll("button").forEach(b => b.onclick = () => send(b.textContent));
 $("#chat-form").onsubmit = e => { e.preventDefault(); send($("#input").value); };
 $("#input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($("#input").value); } });
-addMsg("bot", md("你好，我是你的会员运营助手，可以帮你看会员结构、找流失风险、出运营方案并算账。也可以在「会员概览」里点格子，直接看每类人群的策略和名单。"));
+addMsg("bot", md("你好，我是你的会员运营助手，可以帮你看会员结构、找流失风险、出运营方案并算账。回答一般需要一两分钟，期间可以收起我继续看板，答好了按钮上会有提醒。"));
 
-loadDashboard().catch(() => addMsg("bot", `<span class="muted">看板数据暂时没加载出来，请稍后刷新页面重试。</span>`));
+showTab(location.hash.slice(1));
+loadDashboard().catch(() => { $("#tasks").innerHTML = `<div class="card empty" style="grid-column:1/-1">看板数据暂时没加载出来，请稍后刷新页面重试。</div>`; });
 </script>
 </body>
 </html>

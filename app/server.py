@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -70,9 +70,37 @@ def segments(dimension: str = "stage"):
 @app.get("/api/members")
 def members(stage: str | None = None, value_tier: str | None = None, action_type: str | None = None,
             incentive_group: str | None = None, shortfall: bool | None = None,
-            sort_by: str = "value_at_risk", limit: int = 20):
+            sort_by: str = "value_at_risk", limit: int = 20, offset: int = 0):
     return _tool("find_members", stage=stage, value_tier=value_tier, action_type=action_type,
-                 incentive_group=incentive_group, shortfall=shortfall, sort_by=sort_by, limit=limit)
+                 incentive_group=incentive_group, shortfall=shortfall, sort_by=sort_by, limit=limit, offset=offset)
+
+
+EXPORT_COLUMNS = {"stage_name": "生命周期", "tier_name": "价值分层", "recency_days": "距上次消费天数", "frequency": "消费次数",
+                  "monetary": "累计消费", "churn_prob": "流失概率", "value_at_risk": "流失风险金额",
+                  "incentive_group_name": "权益分组", "churn_reasons": "流失信号", "next_action": "下一步动作",
+                  "next_action_date": "动作日期"}
+
+
+@app.get("/api/members/export")
+def export_members(stage: str | None = None, value_tier: str | None = None, action_type: str | None = None,
+                   incentive_group: str | None = None, shortfall: bool | None = None):
+    """按与名单相同的筛选条件导出全部会员（CSV，带 BOM 方便 Excel 打开中文）。"""
+    try:
+        m = store.filter_members(stage=stage, value_tier=value_tier, action_type=action_type,
+                                 incentive_group=incentive_group, shortfall=shortfall)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    cols = [c for c in EXPORT_COLUMNS if c in m.columns]
+    df = m.sort_values("value_at_risk", ascending=False)[cols].rename(columns=EXPORT_COLUMNS)
+    df.index.name = "会员"
+    for c in ("累计消费", "流失风险金额"):
+        if c in df:
+            df[c] = df[c].round(0)
+    if "流失概率" in df:
+        df["流失概率"] = df["流失概率"].round(3)
+    csv = "\ufeff" + df.to_csv()
+    return Response(csv, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": "attachment; filename*=UTF-8''member-list.csv"})
 
 
 @app.get("/api/members/{customer_id}")

@@ -207,10 +207,9 @@ class MemberStore:
         return _clean({"dimension": DIMENSIONS[dimension], "currency": self.currency, "note": note,
                        "groups": df.reset_index().rename(columns={dimension: "group"}).to_dict("records")})
 
-    def find_members(self, stage: str | None = None, value_tier: str | None = None,
-                     rfm_segment: str | None = None, min_churn_prob: float | None = None,
-                     action_type: str | None = None, incentive_group: str | None = None, shortfall: bool | None = None,
-                     sort_by: str = "value_at_risk", limit: int = 10) -> dict:
+    def filter_members(self, stage: str | None = None, value_tier: str | None = None, rfm_segment: str | None = None,
+                       action_type: str | None = None, incentive_group: str | None = None,
+                       shortfall: bool | None = None) -> pd.DataFrame:
         m = self.members
         if incentive_group:
             if incentive_group not in actions.INCENTIVE_GROUPS:
@@ -228,6 +227,13 @@ class MemberStore:
             m = m[(m["value_tier"] == value_tier) | (m["tier_name"] == value_tier)]
         if rfm_segment:
             m = m[m["rfm_segment"] == rfm_segment]
+        return m
+
+    def find_members(self, stage: str | None = None, value_tier: str | None = None,
+                     rfm_segment: str | None = None, min_churn_prob: float | None = None,
+                     action_type: str | None = None, incentive_group: str | None = None, shortfall: bool | None = None,
+                     sort_by: str = "value_at_risk", limit: int = 10, offset: int = 0) -> dict:
+        m = self.filter_members(stage, value_tier, rfm_segment, action_type, incentive_group, shortfall)
         hint = None
         if min_churn_prob is not None:
             before = m
@@ -242,10 +248,12 @@ class MemberStore:
                 "churn_prob", "pred_clv_365d", "value_at_risk", "strategy", "churn_reasons",
                 "next_action", "next_action_date", "cost_cap", "pred_ltv", "incentive_group_name", "shortfall_reasons"]
         cols = [c for c in cols if c in m.columns]
-        top = m.sort_values(sort_by, ascending=False).head(limit)
+        offset = max(0, int(offset))
+        top = m.sort_values(sort_by, ascending=False).iloc[offset:offset + limit]
         return _clean({
             "hint": hint,
             "matched": len(m),
+            "offset": offset,
             "matched_value_at_risk": m["value_at_risk"].sum(),
             "sorted_by": sort_by,
             "members": top[cols].reset_index().to_dict("records"),
