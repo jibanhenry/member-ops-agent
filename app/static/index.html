@@ -194,6 +194,23 @@ table { border-collapse: collapse; width: 100%; }
 .camp-detail { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; margin-top: 12px; font-size: 13px; }
 .camp-detail table { margin: 8px 0; }
 
+/* 智能体工作台 */
+.brief { font-size: 13px; color: var(--text-secondary); }
+.brief h3 { font-size: 14px; color: var(--text-primary); margin: 10px 0 4px; }
+.brief h3:first-child { margin-top: 0; }
+.brief ul { margin: 4px 0; padding-left: 18px; }
+.brief.fold { max-height: 132px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.td-text { width: 100%; min-height: 120px; font: inherit; font-size: 13px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-1); color: var(--text-primary); resize: vertical; }
+.td-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+.td-row select, .td-row input { font: inherit; font-size: 13px; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-1); color: var(--text-primary); }
+.checks { list-style: none; padding: 0; margin: 6px 0; font-size: 12px; display: grid; gap: 2px; }
+.checks li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+.checks li.bad { color: var(--orange-ink); }
+.checks li.bad::before { content: "✗ "; color: var(--orange-ink); }
+pre.req { background: var(--surface-2); border-radius: 8px; padding: 10px; font-size: 11px; line-height: 1.45; overflow-x: auto; max-height: 280px; margin: 6px 0 0; }
+
 /* 高潜卡 */
 .big-num { font-size: 40px; font-weight: 700; letter-spacing: -1px; }
 
@@ -315,6 +332,11 @@ dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px
 <main>
   <!-- 会员概览：今天的任务 + 核心指标 + 收入与风险结构 -->
   <section class="panel" id="tab-overview" role="tabpanel">
+    <div class="card" id="brief-card" style="margin-bottom:16px">
+      <div class="card-h"><div><h2>智能体本周简报</h2><div class="sub" id="brief-src">智能体根据本周数据整理，数字都来自看板的计算结果</div></div>
+        <div class="act"><button class="btn" id="brief-ai">让智能体重写</button><button class="btn ghost" id="brief-toggle">展开全文</button></div></div>
+      <div class="brief fold" id="brief"></div>
+    </div>
     <div class="section-h"><h2>今天先做这几件事</h2><span class="sub">按风险金额和时效排序</span></div>
     <div class="grid g4" id="tasks"></div>
     <div class="grid g4 mt" id="kpis"></div>
@@ -337,6 +359,13 @@ dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px
   <!-- 行动计划 -->
   <section class="panel" id="tab-plan" role="tabpanel" hidden>
     <div class="grid g3" id="lanes"></div>
+    <div class="card mt" id="guide-card">
+      <div class="card-h"><div><h2>导购任务</h2><div class="sub">本周人工回访和消费不及预期的会员，按会员常去的专柜派给导购；点一行，由智能体起草话术，导购确认后才生成支付宝请求</div></div>
+        <div class="act"><select class="btn" id="task-counter" aria-label="按专柜筛选"></select><select class="btn" id="task-status" aria-label="按状态筛选"></select></div></div>
+      <div class="grid g4" id="task-stats" style="margin-bottom:12px"></div>
+      <div class="scroll-x"><table class="tbl" id="task-rows"></table></div>
+      <div class="more" id="task-more"></div>
+    </div>
     <div class="grid g57 mt">
       <div class="card">
         <div class="card-h"><div><h2>导购排期</h2><div class="sub" id="cap-sub"></div></div></div>
@@ -386,6 +415,13 @@ dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px
       </form>
       <div id="camp-body"></div>
       <div id="camp-detail"></div>
+    </div>
+    <div class="card mt">
+      <div class="card-h"><div><h2>支付宝对接</h2><div class="sub">运营动作对应的支付宝开放接口。当前没有对接真实商家，请求只生成、不发送，不会实际发券或发消息</div></div>
+        <div class="act"><span class="chip orange">未对接商家，未发送</span></div></div>
+      <div class="scroll-x"><table class="tbl" id="alipay-caps"></table></div>
+      <div class="card-h" style="margin:18px 0 8px"><div><h2 style="font-size:14px">已生成的请求</h2><div class="sub" id="outbox-sub"></div></div></div>
+      <div class="scroll-x"><table class="tbl" id="outbox-rows"></table></div>
     </div>
   </section>
 
@@ -449,6 +485,7 @@ dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px
   </div>
 </dialog>
 <dialog id="drawer" class="modal"></dialog>
+<dialog id="task-dialog" class="modal" style="width:min(680px, calc(100vw - 32px))"></dialog>
 <div id="tip" role="tooltip"></div>
 
 <script>
@@ -518,6 +555,7 @@ async function loadDashboard() {
 
   renderTasks(); renderKpis(); renderButterfly(); renderBubbles(); renderTrust();
   renderPlan(); renderBudget(); renderCampaigns(camps.campaigns); renderInsight();
+  loadBrief(); loadTasks(true); loadOutbox();
   $("#camp-segment").innerHTML = mx.cells.filter(c => c.stage !== "lost").map(c =>
     `<option value="${esc(c.stage)}|${esc(c.value_tier)}">${esc(mx.stages[c.stage])} · ${esc(mx.tiers[c.value_tier])}（${c.members.toLocaleString()}）</option>`).join("");
 }
@@ -528,7 +566,7 @@ function renderTasks() {
   const ev = plan.upcoming_events[0];
   const tasks = [];
   if (by.manual) tasks.push(["本周必做", "orange", `联系 ${n0(by.manual.members)} 位重点会员`,
-    `导购人工回访，风险金额 ${moneyShort(by.manual.value_at_risk)}`, "打开回访名单", () => loadActionList("manual")]);
+    `导购人工回访，风险金额 ${moneyShort(by.manual.value_at_risk)}；智能体已按专柜派好任务`, "去导购任务", openGuideTasks]);
   if (ev && by.promo_merge) tasks.push([ev.days_until ? `${ev.days_until} 天后` : "进行中", "blue", `${ev.name}：${n0(by.promo_merge.members)} 人并入大促推送`,
     "大促前的自动挽留合并发送，确认权益与文案", "查看名单", () => loadActionList("promo_merge")]);
   if (ov.shortfall_members) tasks.push(["新发现", "", `${n0(ov.shortfall_members)} 位会员消费不及预期`,
@@ -805,7 +843,14 @@ function showCampaign(c) {
       ${r.significant ? `<span class="chip green">结果可信</span>` : `<span class="chip orange">差异可能只是偶然，暂不作为决策依据</span>`}
       <br><b>结论：</b>${esc(r.verdict)}${r.note ? `<div class="muted" style="margin-top:6px">${esc(r.note)}</div>` : ""}`;
   } else html += `<div class="muted" style="margin-top:6px">${esc(r?.note || "还没有评估：活动结束、数据更新后点「评估」。")}</div>`;
+  if (c.mode === "live") html += `<div class="td-row"><button class="btn" id="camp-alipay">为活动组生成支付宝请求</button><span class="muted" id="camp-alipay-msg">只生成、不发送；对照组不发</span></div>`;
   $("#camp-detail").innerHTML = `<div class="camp-detail">${html}</div>`;
+  const ab = $("#camp-alipay");
+  if (ab) ab.onclick = async () => { ab.disabled = true;
+    try { const res = await api(`/api/campaigns/${c.id}/alipay`, {method: "POST"});
+      $("#camp-alipay-msg").textContent = `已生成 ${res.requests.length} 条请求（${res.status}）。${res.note}`; loadOutbox(); }
+    catch (e) { $("#camp-alipay-msg").textContent = e.message; }
+    ab.disabled = false; };
 }
 
 $("#camp-new").onclick = () => { $("#camp-form").hidden = !$("#camp-form").hidden; };
@@ -819,6 +864,113 @@ $("#camp-form").onsubmit = async e => { e.preventDefault();
     cost_per_member: +f.cost_per_member, redemption_rate: +f.redemption_rate, holdout_pct: +f.holdout_pct, window_days: +f.window_days};
   try { const c = await api("/api/campaigns", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     $("#camp-form").hidden = true; showCampaign(c); await refreshCampaigns(); } catch (err) { alert(err.message); } };
+
+// ---------- 智能体工作台：本周简报、导购任务、话术、支付宝对接 ----------
+async function loadBrief() {
+  const b = await api("/api/brief");
+  $("#brief").innerHTML = md(b.brief);
+}
+$("#brief-toggle").onclick = () => { const f = $("#brief").classList.toggle("fold"); $("#brief-toggle").textContent = f ? "展开全文" : "收起"; };
+$("#brief-ai").onclick = async () => {
+  const btn = $("#brief-ai"); btn.disabled = true; $("#brief-src").textContent = "智能体正在重写简报，可能需要一两分钟…";
+  try { const b = await api("/api/brief/ai", {method: "POST"}); $("#brief").innerHTML = md(b.brief);
+    $("#brief").classList.remove("fold"); $("#brief-toggle").textContent = "收起"; $("#brief-src").textContent = `由 ${b.source} 重写，数字来自看板的计算结果`; }
+  catch (e) { $("#brief-src").textContent = `重写失败：${e.message}`; }
+  btn.disabled = false;
+};
+
+const TASK_STATUSES = ["待处理", "话术已确认", "已生成支付宝请求", "已联系"];
+const RESULTS = ["已到柜", "有意向", "未接通", "明确拒绝", "其他"];
+const CHANNELS = {wecom: "导购企业微信", phone: "电话（导购口述要点）", alipay_msg: "支付宝小程序订阅消息"};
+let T = {limit: 20};
+function openGuideTasks() { showTab("plan"); $("#guide-card").scrollIntoView({behavior: "smooth", block: "start"}); }
+
+async function loadTasks(init) {
+  const t = await api(`/api/tasks?${qs({counter: $("#task-counter").value, status: $("#task-status").value, limit: T.limit})}`);
+  if (init) {
+    $("#task-counter").innerHTML = `<option value="">全部专柜</option>` + Object.entries(t.counters).map(([k, v]) => `<option value="${esc(k)}">${esc(k)}（${v}）</option>`).join("");
+    $("#task-status").innerHTML = `<option value="">全部状态</option>` + TASK_STATUSES.map(x => `<option>${x}</option>`).join("");
+    $("#task-counter").onchange = $("#task-status").onchange = () => { T.limit = 20; loadTasks(false); };
+  }
+  const sc = t.status_counts, stat = (l, v) => `<div class="stat flat"><div class="l">${l}</div><div class="v">${n0(v || 0)}</div></div>`;
+  $("#task-stats").innerHTML = stat("本周任务", t.total) + stat("待处理", sc["待处理"]) + stat("话术已确认 / 已生成请求", (sc["话术已确认"] || 0) + (sc["已生成支付宝请求"] || 0)) + stat("已联系", sc["已联系"]);
+  $("#task-rows").innerHTML = t.tasks.length ? `<tr><th>会员</th><th>专柜</th><th>任务</th><th>原因</th><th class="num">风险金额</th><th>状态</th></tr>` +
+    t.tasks.map(x => `<tr class="click" data-id="${esc(x.customer_id)}" tabindex="0"><td class="nowrap">${esc(x.customer_id)}<div class="muted" style="font-size:12px">${esc(x.tier_name)} · ${esc(x.stage_name)}</div></td>
+      <td class="nowrap">${esc(x.counter)}</td><td class="nowrap">${esc(x.task_type)}${x.incentive_group_name === "高价值·不降价" ? ` <span class="chip">不降价</span>` : ""}</td>
+      <td class="reasons">${esc(x.reason || "—")}</td><td class="num">${money(x.value_at_risk)}</td>
+      <td class="nowrap"><span class="chip ${x.status === "待处理" ? "" : x.status === "已联系" ? "green" : "blue"}">${esc(x.status)}</span>${x.result ? `<div class="muted" style="font-size:12px">${esc(x.result)}</div>` : ""}</td></tr>`).join("")
+    : `<tr><td class="empty">没有符合条件的任务</td></tr>`;
+  $("#task-rows").querySelectorAll("tr.click").forEach(r => { r.onclick = () => openTask(r.dataset.id); r.onkeydown = e => { if (e.key === "Enter") r.onclick(); }; });
+  const left = t.matched - t.tasks.length;
+  $("#task-more").innerHTML = `<span>已显示 ${n0(t.tasks.length)} / 共 ${n0(t.matched)} 条</span>` + (left > 0 ? `<button class="btn small" id="task-load">再加载 20 条</button>` : "");
+  if (left > 0) $("#task-load").onclick = () => { T.limit += 20; loadTasks(false); };
+}
+
+const postJSON = (path, body) => api(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+async function openTask(id) {
+  const dlg = $("#task-dialog");
+  dlg.innerHTML = `<div class="modal-h"><h3>导购任务 · 会员 ${esc(id)}</h3><button class="btn icon close" aria-label="关闭">×</button></div><div class="modal-b">
+    <div id="td-facts" class="strategy">加载中…</div>
+    <div class="td-row"><select id="td-channel" aria-label="触达渠道">${Object.entries(CHANNELS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
+      <button class="btn pri" id="td-ai">智能体起草</button><button class="btn" id="td-tpl">用模板</button><span class="muted" id="td-src" style="font-size:12px"></span></div>
+    <textarea class="td-text" id="td-text" aria-label="话术" placeholder="点「智能体起草」生成话术，导购可以直接修改"></textarea>
+    <ul class="checks" id="td-checks"></ul>
+    <div class="td-row"><button class="btn pri" id="td-confirm">导购确认话术</button><button class="btn" id="td-alipay">生成支付宝请求</button>
+      <button class="btn ghost" id="td-profile">查看会员详情 ›</button></div>
+    <h4>联系结果（由导购回填）</h4>
+    <div class="td-row"><select id="td-result" aria-label="联系结果"><option value="">选择结果…</option>${RESULTS.map(r => `<option>${r}</option>`).join("")}</select>
+      <input id="td-note" placeholder="备注（选填）" style="flex:1;min-width:160px" aria-label="备注"><button class="btn" id="td-save">记录结果</button></div>
+    <div class="note" id="td-msg" hidden></div></div>`;
+  const msg = (html, ok = true) => { const m = $("#td-msg"); m.hidden = false; m.innerHTML = html; };
+  dlg.querySelector(".close").onclick = () => dlg.close();
+  dlg.onclose = () => loadTasks(false);
+  dlg.showModal();
+  const showChecks = checks => { $("#td-checks").innerHTML = checks.map(c => `<li class="${c.ok ? "" : "bad"}">${esc(c.rule)}${c.detail && !c.ok ? `：${esc(c.detail)}` : ""}</li>`).join(""); };
+  const draft = async useAi => {
+    $("#td-src").textContent = useAi ? "智能体起草中，可能需要一两分钟…" : "";
+    try { const d = await postJSON(`/api/tasks/${id}/draft`, {channel: $("#td-channel").value, use_ai: useAi});
+      $("#td-text").value = d.text; $("#td-src").textContent = `来源：${d.source}`; showChecks(d.checks); return d; }
+    catch (e) { $("#td-src").textContent = e.message; } };
+  const d = await draft(false);
+  if (d) { const f = d.facts;
+    $("#td-facts").innerHTML = `<b>${esc(f["常去专柜"])}</b> · ${esc(f["价值分层"])} · ${esc(f["生命周期"])} · 距上次到柜 ${f["距上次到柜天数"]} 天${f["平时到柜间隔天数"] ? `（平时约 ${f["平时到柜间隔天数"]} 天一次）` : ""}
+      <div style="margin-top:4px">原因：${esc(f["需要关注的原因"].join("；") || "—")}</div>
+      <div>适用权益：${esc(f["适用权益"] || "—")} ${f["禁止价格减免"] ? `<span class="chip orange">禁止价格减免</span>` : ""} · 单人成本上限 ${money(f["单人成本上限"])}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">智能体起草时只用到以上事实，拿不到会员的生日、卡号和消费明细。</div>`; }
+  $("#td-text").oninput = async () => { clearTimeout($("#td-text").t); $("#td-text").t = setTimeout(async () => {
+    try { const c = await postJSON(`/api/tasks/${id}/check`, {channel: $("#td-channel").value, text: $("#td-text").value}); showChecks(c.checks); } catch (e) {} }, 400); };
+  $("#td-channel").onchange = () => draft(false);
+  $("#td-ai").onclick = () => draft(true);
+  $("#td-tpl").onclick = () => draft(false);
+  $("#td-confirm").onclick = async () => {
+    try { await postJSON(`/api/tasks/${id}`, {status: "话术已确认", channel: $("#td-channel").value, text: $("#td-text").value}); msg("话术已确认，可以生成支付宝请求，或由导购在企业微信、电话里使用。"); }
+    catch (e) { msg(esc(e.message), false); } };
+  $("#td-alipay").onclick = async () => {
+    try { const r = await api(`/api/tasks/${id}/alipay`, {method: "POST"});
+      msg(`已生成 ${r.requests.length} 条请求（${esc(r.status)}）：${r.requests.map(x => esc(x.api_name)).join("、")}。可在「预算与活动 › 支付宝对接」查看请求内容。`); loadOutbox(); }
+    catch (e) { msg(esc(e.message), false); } };
+  $("#td-save").onclick = async () => {
+    if (!$("#td-result").value) { msg("请先选择联系结果。", false); return; }
+    try { await postJSON(`/api/tasks/${id}`, {status: "已联系", result: $("#td-result").value, note: $("#td-note").value}); msg("结果已记录。系统只记录导购回填的结果，不会自动生成结果。"); }
+    catch (e) { msg(esc(e.message), false); } };
+  $("#td-profile").onclick = () => { dlg.close(); openMember(id); };
+}
+$("#task-dialog").addEventListener("click", e => { if (e.target === $("#task-dialog")) $("#task-dialog").close(); });
+
+async function loadOutbox() {
+  const o = await api("/api/outbox?limit=20");
+  $("#alipay-caps").innerHTML = `<tr><th>运营动作</th><th>支付宝能力</th><th>接口</th><th>前提</th></tr>` +
+    o.capabilities.map(c => `<tr><td>${esc(c.action)}</td><td class="nowrap">${esc(c.capability)}</td><td><code style="font-size:12px">${esc(c.api)}</code></td><td class="reasons">${esc(c["需要"])}</td></tr>`).join("");
+  $("#outbox-sub").textContent = o.total ? `共 ${n0(o.total)} 条，点一行查看请求内容` : "";
+  $("#outbox-rows").innerHTML = o.items.length ? `<tr><th>时间</th><th>接口</th><th>来源</th><th>状态</th></tr>` + o.items.map(x => `<tr class="click" data-id="${esc(x.id)}" tabindex="0">
+      <td class="reasons nowrap">${esc(x.created_at.replace("T", " "))}</td><td>${esc(x.api_name)}<div class="muted" style="font-size:12px"><code>${esc(x.api)}</code></div></td>
+      <td class="reasons">${esc(x.context.type)}：${esc(x.context.campaign || x.context.customer_id || "")}${x.context.note ? `<br>${esc(x.context.note)}` : ""}</td>
+      <td><span class="chip orange">${esc(x.status)}</span></td></tr>
+      <tr hidden data-req="${esc(x.id)}"><td colspan="4"><pre class="req">${esc(JSON.stringify(x.request, null, 2))}</pre></td></tr>`).join("")
+    : `<tr><td class="empty">还没有生成请求。在「行动计划 › 导购任务」里确认话术后，或在活动详情里，可以生成对应的支付宝接口请求。</td></tr>`;
+  $("#outbox-rows").querySelectorAll("tr.click").forEach(r => { r.onclick = () => { const d = $(`#outbox-rows tr[data-req="${r.dataset.id}"]`); d.hidden = !d.hidden; };
+    r.onkeydown = e => { if (e.key === "Enter") r.onclick(); }; });
+}
 
 // ---------- 价值洞察 ----------
 let acqMode = "amount";
@@ -1039,8 +1191,8 @@ $("#chat-close").onclick = () => setChat(false);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && chat.classList.contains("open") && !sheet.open && !$("#drawer").open) setChat(false); });
 
 const SUGGEST = {
-  overview: ["会员整体情况怎么样？", "哪些高价值会员有流失风险？", "预测靠谱吗？"],
-  plan: ["这周导购应该先联系谁？", "年货节前应该怎么安排触达？"],
+  overview: ["给我本周简报", "会员整体情况怎么样？", "哪些高价值会员有流失风险？"],
+  plan: ["这周导购应该先联系谁？", "帮 LANCOME 专柜的第一位任务会员写一条话术", "年货节前应该怎么安排触达？"],
   budget: ["羊毛党要不要发券？", "给衰退预警的高价值会员设计一个挽留方案并算算账", "活动有没有带来额外消费？"],
   insight: ["高价值会员是什么样的，拉新往哪倾斜？", "会员和非会员差在哪？"],
 };

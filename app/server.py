@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from member_ops import tasks
 from member_ops.agent import MemberOpsAgent
 from member_ops.tools import MemberStore, run_tool
 
@@ -179,6 +180,96 @@ def delete_campaign(campaign_id: str):
         return store.delete_campaign(campaign_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# ---------- 智能体工作台 ----------
+
+def _call(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/brief")
+def brief():
+    return _tool("get_weekly_brief")
+
+
+@app.post("/api/brief/ai")
+def brief_ai():
+    """让大模型把简报改写成店长能直接读的版本；数字只能来自事实。"""
+    b = store.get_weekly_brief()
+    text, source = agent.complete(
+        "你是会员运营智能体，每周一给门店店长写一份行动简报。要求：结论先行，最多 6 条，每条一句话；"
+        "所有数字只能来自给出的事实，不要编造；最后单列'需要你决定的事'。用中文，使用 Markdown 小标题和列表。",
+        "本周事实：" + json.dumps(b["facts"], ensure_ascii=False, default=str))
+    return {"brief": text or b["brief"], "source": source if text else f"{source}，已显示模板简报"}
+
+
+@app.get("/api/tasks")
+def guide_tasks(counter: str | None = None, status: str | None = None, limit: int = 30):
+    return _tool("list_guide_tasks", counter=counter, status=status, limit=limit)
+
+
+class DraftRequest(BaseModel):
+    channel: str = "wecom"
+    use_ai: bool = True
+
+
+@app.post("/api/tasks/{customer_id}/draft")
+def draft(customer_id: str, req: DraftRequest):
+    """起草话术：有大模型时按会员事实生成，否则用模板；返回合规检查结果，导购可修改后确认。"""
+    ctx = _tool("get_draft_context", customer_id=customer_id, channel=req.channel)
+    text, source = (None, "模板")
+    if req.use_ai:
+        text, source = agent.complete(tasks.SYSTEM, tasks.ai_prompt(ctx["facts"], req.channel))
+    if not text:
+        source = "模板" if not req.use_ai else f"模板（{source}）"
+        text = ctx["template"]
+    return {"text": text, "source": source, "facts": ctx["facts"], "channel": ctx["channel"],
+            **store.check_draft(customer_id, req.channel, text)}
+
+
+class DraftCheck(BaseModel):
+    channel: str = "wecom"
+    text: str = ""
+
+
+@app.post("/api/tasks/{customer_id}/check")
+def check_draft(customer_id: str, req: DraftCheck):
+    """导购修改话术时实时做合规检查。"""
+    if req.channel not in tasks.CHANNELS:
+        raise HTTPException(status_code=400, detail="未知渠道")
+    return _call(store.check_draft, customer_id, req.channel, req.text)
+
+
+class TaskUpdate(BaseModel):
+    status: str | None = None
+    channel: str | None = None
+    text: str | None = None
+    result: str | None = None
+    note: str | None = None
+
+
+@app.post("/api/tasks/{customer_id}")
+def update_task(customer_id: str, req: TaskUpdate):
+    return _call(store.update_task, customer_id, **req.model_dump())
+
+
+@app.post("/api/tasks/{customer_id}/alipay")
+def task_alipay(customer_id: str):
+    return _call(store.prepare_alipay_for_task, customer_id)
+
+
+@app.post("/api/campaigns/{campaign_id}/alipay")
+def campaign_alipay(campaign_id: str):
+    return _call(store.prepare_alipay_for_campaign, campaign_id)
+
+
+@app.get("/api/outbox")
+def outbox(limit: int = 50):
+    return store.get_outbox(limit)
 
 
 @app.get("/api/model-report")

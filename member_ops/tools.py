@@ -12,7 +12,7 @@ from functools import cached_property
 import pandas as pd
 import pyarrow.parquet as pq
 
-from . import actions, campaigns, economics
+from . import actions, alipay, campaigns, economics, tasks
 from .data import CONFIG, PROCESSED_DIR
 from .segments import load_playbook, match_strategy
 
@@ -473,6 +473,102 @@ class MemberStore:
         self._apply_holdouts()
         return {"deleted": campaign_id}
 
+    # ---------- 智能体工作台 ----------
+
+    def get_weekly_brief(self) -> dict:
+        """智能体每周主动给店长的简报：本周要做的事、钱花得怎样、需要决定的事。"""
+        f = tasks.weekly_facts(self)
+        return _clean({"facts": f, "brief": tasks.template_brief(f, self.currency)})
+
+    def list_guide_tasks(self, counter: str | None = None, status: str | None = None, limit: int = 20) -> dict:
+        t = tasks.task_frame(self.members)
+        summary = {"total": len(t), "counters": t["counter"].value_counts().head(30).to_dict(),
+                   "status_counts": t["status"].value_counts().to_dict()}
+        if counter:
+            t = t[t["counter"] == counter]
+        if status:
+            t = t[t["status"] == status]
+        names, tiers = self.playbook["stage_names"], self.playbook["tier_names"]
+        rows = [{"customer_id": k, "counter": r["counter"], "task_type": r["task_type"], "stage_name": names.get(r["stage"]),
+                 "tier_name": tiers.get(r["value_tier"]), "recency_days": r["recency_days"], "value_at_risk": r["value_at_risk"],
+                 "reason": ((r["shortfall_reasons"] if r["action_type"] == "shortfall" else r["churn_reasons"]) or "").split("；")[0],
+                 "incentive_group_name": r["incentive_group_name"], "status": r["status"], "result": r["result"]}
+                for k, r in t.head(max(1, min(int(limit), 100))).iterrows()]
+        return _clean(summary | {"matched": len(t), "tasks": rows})
+
+    def get_draft_context(self, customer_id: str, channel: str = "wecom") -> dict:
+        """起草话术需要的事实、模板话术和合规规则；话术由导购确认后才能生成支付宝请求。"""
+        cid = str(customer_id)
+        if cid not in self.members.index:
+            raise ValueError(f"找不到会员 {cid}")
+        if channel not in tasks.CHANNELS:
+            raise ValueError(f"channel 必须是 {list(tasks.CHANNELS)} 之一")
+        f = tasks.facts(self.members.loc[cid], self.playbook, self.playbook["stage_names"], self.playbook["tier_names"])
+        state = tasks.load_state().get(cid, {})
+        return _clean({"facts": f, "channel": tasks.CHANNELS[channel]["name"], "template": tasks.template_draft(f, channel),
+                       "rules": [c["rule"] for c in tasks.check("", f, channel)], "task": state})
+
+    def check_draft(self, customer_id: str, channel: str, text: str) -> dict:
+        if str(customer_id) not in self.members.index:
+            raise ValueError(f"找不到会员 {customer_id}")
+        f = tasks.facts(self.members.loc[str(customer_id)], self.playbook, self.playbook["stage_names"], self.playbook["tier_names"])
+        checks = tasks.check(text, f, channel)
+        return {"checks": checks, "passed": all(c["ok"] for c in checks)}
+
+    def update_task(self, customer_id: str, **fields) -> dict:
+        cid = str(customer_id)
+        if cid not in self.members.index:
+            raise ValueError(f"找不到会员 {cid}")
+        if fields.get("status") == "话术已确认":
+            res = self.check_draft(cid, fields.get("channel") or "wecom", fields.get("text") or "")
+            if not res["passed"]:
+                raise ValueError("话术没有通过合规检查：" + "；".join(c["rule"] for c in res["checks"] if not c["ok"]))
+        if fields.get("result") and fields["result"] not in tasks.RESULTS:
+            raise ValueError(f"结果必须是 {tasks.RESULTS} 之一")
+        return tasks.update(cid, **fields)
+
+    def prepare_alipay_for_task(self, customer_id: str) -> dict:
+        """导购确认话术后，生成对应的支付宝接口请求（不发送）：订阅消息提醒，积分类权益附带会员卡更新。"""
+        cid = str(customer_id)
+        state = tasks.load_state().get(cid, {})
+        if state.get("status") not in ("话术已确认", "已生成支付宝请求", "已联系"):
+            raise ValueError("话术还没有由导购确认，不能生成支付宝请求")
+        f = tasks.facts(self.members.loc[cid], self.playbook, self.playbook["stage_names"], self.playbook["tier_names"])
+        reqs = [alipay.subscribe_message(cid, [f"{f['常去专柜']}会员关怀", state.get("text", "")[:20], "欢迎到柜"])]
+        if "积分" in f["适用权益"]:
+            reqs.append(alipay.card_update(cid, point="<当前积分 + 本次礼遇积分>", reason="会员积分礼遇"))
+        items = alipay.record(reqs, {"type": "导购任务", "customer_id": cid, "counter": f["常去专柜"], "text": state.get("text", "")})
+        tasks.update(cid, status="已生成支付宝请求")
+        return _clean({"status": alipay.STATUS, "requests": items})
+
+    def prepare_alipay_for_campaign(self, campaign_id: str) -> dict:
+        """为活动的实验组生成支付宝请求（不发送）：让利型权益建商家券活动，其他权益发订阅消息；对照组不发。"""
+        rec = next((c for c in campaigns.load_all() if c["id"] == campaign_id), None)
+        if rec is None:
+            raise ValueError(f"找不到活动 {campaign_id}")
+        treat = [k for k, v in rec["members"].items() if v[0] == "treat"]
+        no_cut = actions.cfg(self.playbook, "incentive_rules")["no_price_cut_tiers"]
+        start = max(pd.Timestamp(rec["start_date"]), self.snapshot)
+        if rec["incentive_type"] == "price_cut":
+            if rec["value_tier"] in no_cut:
+                raise ValueError("高价值会员不做价格减免，不能为这个活动创建商家券")
+            aov = float(self.members.loc[self.members.index.intersection(treat), "aov"].median() or 0)
+            floor = max(rec["cost_per_member"] * 5, round(aov / 100) * 100)
+            reqs = [alipay.voucher_activity(rec["name"], rec["cost_per_member"], floor, len(treat), start, rec["window_days"],
+                                            f"满 {floor:.0f} 减 {rec['cost_per_member']:.0f}，会员专享")]
+            note = f"券活动限量 {len(treat)} 张（每位实验组会员 1 张），通过订阅消息通知领取；对照组不发"
+        else:
+            reqs = [alipay.subscribe_message(treat[0], [rec["name"][:20], rec["action"][:20], "欢迎到柜"])] if treat else []
+            note = f"订阅消息按会员逐条发送，这里展示第 1 条，共 {len(treat)} 位实验组会员；对照组不发"
+        items = alipay.record(reqs, {"type": "活动", "campaign_id": campaign_id, "campaign": rec["name"],
+                                     "treat_members": len(treat), "note": note})
+        return _clean({"status": alipay.STATUS, "note": note, "requests": items})
+
+    def get_outbox(self, limit: int = 50) -> dict:
+        box = alipay.load_outbox()
+        return _clean({"status": alipay.STATUS, "capabilities": alipay.CAPABILITIES, "total": len(box),
+                       "items": list(reversed(box))[:limit]})
+
     def get_model_report(self) -> dict:
         return self.report
 
@@ -502,6 +598,9 @@ TOOL_LABELS = {
     "create_campaign": "登记活动并留对照组",
     "list_campaigns": "查看活动与对照实验",
     "evaluate_campaign": "评估活动增量效果",
+    "get_weekly_brief": "生成本周简报",
+    "list_guide_tasks": "查看导购任务",
+    "get_draft_context": "准备话术素材",
     "get_action_plan": "查看本周行动计划",
     "get_model_report": "核对预测准确度",
 }
@@ -638,6 +737,37 @@ TOOL_SPECS = [
             "type": "object",
             "properties": {"campaign_id": {"type": "string", "description": "活动 ID，用 list_campaigns 查询"}},
             "required": ["campaign_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_weekly_brief",
+        "description": "本周简报：本周要做的事（导购任务、人工产能、高价值未达预期及原因、近期档期）、钱花得怎样（用户 ROI、高价值占比、羊毛党不发券）、需要店长决定的事（待评估活动、尚未做实验）以及导购执行进度。被问到'这周怎么安排''给我个简报'时调用。",
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "list_guide_tasks",
+        "description": "本周导购任务：人工回访和未达预期跟进，按会员常去的专柜分配，返回每个专柜的任务数、执行状态，以及任务明细（会员、原因、权益分组、状态、导购回填的结果）。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "counter": {"type": "string", "description": "专柜名，如 LANCOME"},
+                "status": {"type": "string", "enum": tasks.STATUSES},
+                "limit": {"type": "integer", "description": "返回条数，默认 20"},
+            },
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_draft_context",
+        "description": "为某位会员起草导购话术前，取得可用的事实（阶段、价值层、常去专柜、距上次到柜天数、原因、适用权益、是否禁止价格减免）、模板话术和合规规则。你可以据此写话术，但只能用这些事实；话术要由导购在看板里确认后才会生成支付宝请求。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "string"},
+                "channel": {"type": "string", "enum": list(tasks.CHANNELS), "description": "wecom=导购企业微信，phone=电话，alipay_msg=支付宝小程序订阅消息"},
+            },
+            "required": ["customer_id"],
             "additionalProperties": False,
         },
     },

@@ -46,6 +46,8 @@ def build_system_prompt(store: MemberStore) -> str:
 - 算账口径：用户 ROI =（预测消费 × 实际毛利率 − 真实运营成本）÷ 真实运营成本。实际毛利率按会员自己的折扣率折算；真实成本 = 每人固定成本 + 按下一步动作计价的动作投入（导购回访、定向触达、补货提醒等）+ 权益（让利全额、赠品成本价），不是券面额。用 get_budget_plan 看各人群 ROI 和整体是否为正
 - 两个 ROI 管不同的事：用户 ROI 说明"这个人值不值得花这些钱"，只用来定成本上限和预算倾斜；"这笔钱有没有带来额外消费"要看对照实验的增量 ROI（实验组和对照组'实际 − 预测'的差距），只有它能决定一个动作要不要继续。没有实验数据的人群要说"待验证"，不要拿用户 ROI 当作活动效果
 - 活动用 create_campaign 登记并留对照组，用 evaluate_campaign 评估；回放演示的活动没有真实执行，不能当作效果证据
+- 你会主动推进工作：get_weekly_brief 是给店长的本周简报，list_guide_tasks 是按专柜派给导购的任务；写导购话术前先调用 get_draft_context，只用其中的事实，"禁止价格减免"为 true 时不能出现任何价格优惠
+- 支付宝对接（商家券、小程序订阅消息、会员卡）目前没有对接真实商家，只生成请求、不发送；不要说"已发送""已发券"
 - 高价值画像和拉新来源用 get_value_portrait 查询
 </data_context>
 
@@ -124,6 +126,17 @@ class OllamaBackend:
                         raise RuntimeError(chunk["error"])
                     yield chunk.get("message", {})
 
+    def complete(self, system: str, prompt: str) -> str:
+        """不带工具的一次性生成，用于起草话术、改写简报。"""
+        body = json.dumps({
+            "model": OLLAMA_MODEL, "stream": False, "keep_alive": "30m", "think": False,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+            "options": {"num_ctx": OLLAMA_NUM_CTX, "temperature": 0.5},
+        }).encode()
+        req = urllib.request.Request(f"{OLLAMA_URL}/api/chat", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=600) as r:
+            return json.load(r)["message"]["content"].strip()
+
     def stream(self, history: list):
         trace = []
         for _ in range(MAX_TOOL_ROUNDS):
@@ -181,6 +194,11 @@ class ClaudeBackend:
         self.store = store
         self.system = system
         self.client = anthropic.Anthropic()
+
+    def complete(self, system: str, prompt: str) -> str:
+        response = self.client.messages.create(model=CLAUDE_MODEL, max_tokens=2000, system=system,
+                                               messages=[{"role": "user", "content": prompt}])
+        return "".join(b.text for b in response.content if b.type == "text").strip()
 
     def stream(self, history: list):
         trace = []
@@ -244,6 +262,15 @@ class MemberOpsAgent:
     @property
     def label(self) -> str:
         return self.backend.label if self.backend else "离线规则模式"
+
+    def complete(self, system: str, prompt: str) -> tuple[str | None, str]:
+        """一次性生成，返回 (文本, 来源)；没有大模型或调用失败时返回 (None, 原因)。"""
+        if self.backend is None:
+            return None, "没有可用的大模型"
+        try:
+            return self.backend.complete(system, prompt), self.label
+        except Exception as e:
+            return None, f"大模型调用失败（{type(e).__name__}）"
 
     def chat_stream(self, session_id: str, user_message: str):
         """产出事件流：text（增量文字）/ tool_start / tool_end / reset（清空本轮已显示文字）/ done。"""
@@ -355,6 +382,11 @@ def offline_answer(store: MemberStore, message: str, note: str | None = None) ->
         lines += [f"- {x['group']}：首年人均消费 {_fmt_money(x['first_year_spend'], cur)}，现在高价值占比 {x['high_share']:.0%}"
                   for x in acq["by_first_amount"]]
         return {"answer": "\n".join(lines), "tool_calls": calls, "mode": "offline"}
+
+    if any(k in message for k in ("简报", "周报", "这周怎么安排")):
+        b = run_tool(store, "get_weekly_brief", {})
+        calls.append({"tool": "get_weekly_brief", "input": {}})
+        return {"answer": "\n".join(lines + [b["brief"]]), "tool_calls": calls, "mode": "offline"}
 
     if any(k in message for k in ("活动", "实验", "对照", "有没有用", "额外消费", "增量")):
         cs = run_tool(store, "list_campaigns", {})["campaigns"]

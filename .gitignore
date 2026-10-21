@@ -6,3 +6,5 @@ data/processed/
 ._*
 .claude/
 data/campaigns.json
+data/tasks.json
+data/outbox.json
