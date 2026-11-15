@@ -71,7 +71,7 @@ header { position: sticky; top: 0; z-index: 20; background: var(--surface-1); bo
 .topbar { display: flex; align-items: center; gap: 24px; height: 60px; padding: 0 32px; max-width: 1480px; margin: 0 auto; }
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; white-space: nowrap; }
 .logo i { width: 24px; height: 24px; border-radius: 7px; background: var(--blue); display: block; }
-nav.seg { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; overflow-x: auto; }
+nav.seg { min-width: 0; display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; overflow-x: auto; }
 nav.seg button { border: 0; background: none; padding: 6px 16px; border-radius: 7px; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
 nav.seg button:hover { color: var(--text-primary); }
 nav.seg button[aria-selected="true"] { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
@@ -82,6 +82,10 @@ nav.seg button[aria-selected="true"] { background: var(--surface-1); color: var(
 .chip.green { background: var(--green-soft); color: var(--green-ink); }
 button.chip { border: 0; cursor: pointer; }
 button.chip[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue-d); font-weight: 600; }
+.lang { display: inline-flex; background: var(--surface-2); padding: 3px; border-radius: 8px; }
+.lang button { border: 0; background: none; padding: 3px 10px; border-radius: 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+.lang button:hover { color: var(--text-primary); }
+.lang button[aria-pressed="true"] { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 
 main { max-width: 1480px; margin: 0 auto; padding: 24px 32px 96px; }
 .panel[hidden] { display: none; }
@@ -325,7 +329,8 @@ dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px
       <button role="tab" data-tab="budget" aria-selected="false">预算与活动</button>
       <button role="tab" data-tab="insight" aria-selected="false">价值洞察</button>
     </nav>
-    <div class="top-meta"><span id="snapshot"></span><span class="chip" id="dataset" hidden>演示数据</span></div>
+    <div class="top-meta"><span id="snapshot"></span><span class="chip" id="dataset" hidden>演示数据</span>
+      <div class="lang" role="group" aria-label="语言 / Language" data-noi18n><button data-lang="zh" aria-pressed="true">中文</button><button data-lang="en" aria-pressed="false">EN</button></div></div>
   </div>
 </header>
 
@@ -488,6 +493,7 @@ dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px
 <dialog id="task-dialog" class="modal" style="width:min(680px, calc(100vw - 32px))"></dialog>
 <div id="tip" role="tooltip"></div>
 
+<script src="/static/i18n.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -814,7 +820,7 @@ function renderCampaigns(list) {
   rows.querySelectorAll("button[data-eval]").forEach(b => b.onclick = async e => { e.stopPropagation(); b.disabled = true;
     try { showCampaign(await api(`/api/campaigns/${b.dataset.eval}/evaluate`, {method: "POST"})); await refreshCampaigns(); } catch (err) { alert(err.message); } b.disabled = false; });
   rows.querySelectorAll("button[data-del]").forEach(b => b.onclick = async e => { e.stopPropagation();
-    if (!confirm("删除这个活动？对照组会员会恢复正常触达。")) return;
+    if (!confirm(I18N.t("删除这个活动？对照组会员会恢复正常触达。"))) return;
     await api(`/api/campaigns/${b.dataset.del}`, {method: "DELETE"}); $("#camp-detail").innerHTML = ""; await refreshCampaigns(); });
   rows.querySelectorAll("tr.click").forEach(r => r.addEventListener("click", () => showCampaign(list.find(c => c.id === r.dataset.id))));
 }
@@ -868,12 +874,13 @@ $("#camp-form").onsubmit = async e => { e.preventDefault();
 // ---------- 智能体工作台：本周简报、导购任务、话术、支付宝对接 ----------
 async function loadBrief() {
   const b = await api("/api/brief");
-  $("#brief").innerHTML = md(b.brief);
+  $("#brief").removeAttribute("data-noi18n"); $("#brief").innerHTML = md(b.brief);
 }
 $("#brief-toggle").onclick = () => { const f = $("#brief").classList.toggle("fold"); $("#brief-toggle").textContent = f ? "展开全文" : "收起"; };
 $("#brief-ai").onclick = async () => {
   const btn = $("#brief-ai"); btn.disabled = true; $("#brief-src").textContent = "智能体正在重写简报，可能需要一两分钟…";
-  try { const b = await api("/api/brief/ai", {method: "POST"}); $("#brief").innerHTML = md(b.brief);
+  try { const b = await api(`/api/brief/ai?lang=${I18N.lang}`, {method: "POST"});
+    $("#brief").setAttribute("data-noi18n", ""); $("#brief").innerHTML = md(b.brief);  // 大模型写的原文不再二次翻译
     $("#brief").classList.remove("fold"); $("#brief-toggle").textContent = "收起"; $("#brief-src").textContent = `由 ${b.source} 重写，数字来自看板的计算结果`; }
   catch (e) { $("#brief-src").textContent = `重写失败：${e.message}`; }
   btn.disabled = false;
@@ -889,7 +896,7 @@ async function loadTasks(init) {
   const t = await api(`/api/tasks?${qs({counter: $("#task-counter").value, status: $("#task-status").value, limit: T.limit})}`);
   if (init) {
     $("#task-counter").innerHTML = `<option value="">全部专柜</option>` + Object.entries(t.counters).map(([k, v]) => `<option value="${esc(k)}">${esc(k)}（${v}）</option>`).join("");
-    $("#task-status").innerHTML = `<option value="">全部状态</option>` + TASK_STATUSES.map(x => `<option>${x}</option>`).join("");
+    $("#task-status").innerHTML = `<option value="">全部状态</option>` + TASK_STATUSES.map(x => `<option value="${x}">${x}</option>`).join("");
     $("#task-counter").onchange = $("#task-status").onchange = () => { T.limit = 20; loadTasks(false); };
   }
   const sc = t.status_counts, stat = (l, v) => `<div class="stat flat"><div class="l">${l}</div><div class="v">${n0(v || 0)}</div></div>`;
@@ -918,7 +925,7 @@ async function openTask(id) {
     <div class="td-row"><button class="btn pri" id="td-confirm">导购确认话术</button><button class="btn" id="td-alipay">生成支付宝请求</button>
       <button class="btn ghost" id="td-profile">查看会员详情 ›</button></div>
     <h4>联系结果（由导购回填）</h4>
-    <div class="td-row"><select id="td-result" aria-label="联系结果"><option value="">选择结果…</option>${RESULTS.map(r => `<option>${r}</option>`).join("")}</select>
+    <div class="td-row"><select id="td-result" aria-label="联系结果"><option value="">选择结果…</option>${RESULTS.map(r => `<option value="${r}">${r}</option>`).join("")}</select>
       <input id="td-note" placeholder="备注（选填）" style="flex:1;min-width:160px" aria-label="备注"><button class="btn" id="td-save">记录结果</button></div>
     <div class="note" id="td-msg" hidden></div></div>`;
   const msg = (html, ok = true) => { const m = $("#td-msg"); m.hidden = false; m.innerHTML = html; };
@@ -966,7 +973,7 @@ async function loadOutbox() {
       <td class="reasons nowrap">${esc(x.created_at.replace("T", " "))}</td><td>${esc(x.api_name)}<div class="muted" style="font-size:12px"><code>${esc(x.api)}</code></div></td>
       <td class="reasons">${esc(x.context.type)}：${esc(x.context.campaign || x.context.customer_id || "")}${x.context.note ? `<br>${esc(x.context.note)}` : ""}</td>
       <td><span class="chip orange">${esc(x.status)}</span></td></tr>
-      <tr hidden data-req="${esc(x.id)}"><td colspan="4"><pre class="req">${esc(JSON.stringify(x.request, null, 2))}</pre></td></tr>`).join("")
+      <tr hidden data-req="${esc(x.id)}"><td colspan="4"><pre class="req" data-noi18n>${esc(JSON.stringify(x.request, null, 2))}</pre></td></tr>`).join("")
     : `<tr><td class="empty">还没有生成请求。在「行动计划 › 导购任务」里确认话术后，或在活动详情里，可以生成对应的支付宝接口请求。</td></tr>`;
   $("#outbox-rows").querySelectorAll("tr.click").forEach(r => { r.onclick = () => { const d = $(`#outbox-rows tr[data-req="${r.dataset.id}"]`); d.hidden = !d.hidden; };
     r.onkeydown = e => { if (e.key === "Enter") r.onclick(); }; });
@@ -997,7 +1004,7 @@ function renderInsight() {
     $("#compare-sub").textContent = `${mv.period[0]} 至 ${mv.period[1]} 的全部流水`;
     const m = mv.member, n = mv.non_member;
     const rows = [["收入", m.revenue, n.revenue, moneyShort], ["订单数", m.orders, n.orders, n0], ["客单价", m.aov, n.aov, money], ["件数/单", m.items_per_order, n.items_per_order, x => x.toFixed(1)]];
-    const W = 600, rowH = 58, lw = 70, bmax = W - lw - 100;
+    const W = 600, rowH = 58, lw = 88, bmax = W - lw - 100;
     let svg = "";
     rows.forEach(([name, a, b, f], i) => { const y = i * rowH, mx = Math.max(a, b) || 1;
       svg += `<text x="0" y="${y + 26}" font-size="13">${name}</text>
@@ -1029,7 +1036,7 @@ function renderAcq() {
   document.querySelectorAll("[data-acq]").forEach(b => b.setAttribute("aria-pressed", b.dataset.acq === acqMode));
   if (!rows.length) { $("#acq").innerHTML = `<div class="empty">暂无数据</div>`; return; }
   const W = 760, rowH = 46, lw = 120, H = rowH * rows.length + 6, mx = Math.max(...rows.map(r => r.first_year_spend), overall) || 1;
-  const X = v => lw + v / mx * (W - lw - 220);
+  const X = v => lw + v / mx * (W - lw - 290);
   let svg = `<line x1="${X(overall)}" y1="0" x2="${X(overall)}" y2="${H}" style="stroke:var(--text-muted)" stroke-dasharray="3 3"></line>`;
   rows.forEach((r, i) => { const y = i * rowH;
     svg += `<text x="0" y="${y + 20}" font-size="13" class="t-strong" style="font-weight:400">${esc(r.group)}</text>
@@ -1222,13 +1229,13 @@ function md(src) {
 const SESSION = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
 function addMsg(role, html) {
   const d = document.createElement("div"); d.className = `msg ${role}`;
-  d.innerHTML = `<div class="bubble">${html}</div>`;
+  d.innerHTML = `<div class="bubble"${role === "user" ? " data-noi18n" : ""}>${html}</div>`;
   $("#msgs").appendChild(d); $("#msgs").scrollTop = 1e9; return d;
 }
 
 // 一条助手消息：上方是查数步骤，下方是逐字生成的回答
 function botBubble() {
-  const d = addMsg("bot", '<div class="steps"></div><div class="answer"></div><div class="waiting"></div>');
+  const d = addMsg("bot", '<div class="steps"></div><div class="answer" data-noi18n></div><div class="waiting"></div>');
   const el = {steps: d.querySelector(".steps"), answer: d.querySelector(".answer"), waiting: d.querySelector(".waiting")};
   let text = "", frame = 0, running = null;
   const started = Date.now();
@@ -1248,8 +1255,8 @@ function botBubble() {
     done(e) { finish(); if (frame) cancelAnimationFrame(frame); el.waiting.textContent = "";
       el.answer.classList.remove("caret"); el.answer.innerHTML = md(e.answer || text);
       el.waiting.outerHTML = `<div class="foot">用时 ${Math.round((Date.now() - started) / 1000)} 秒</div>`; },
-    fail(msg) { finish(); el.waiting.textContent = ""; el.answer.classList.remove("caret");
-      el.answer.innerHTML += `<p class="muted">没能完成回答：${esc(msg)}，请稍后再试。</p>`; },
+    fail(msg) { finish(); el.answer.classList.remove("caret");
+      el.waiting.textContent = `没能完成回答：${msg}，请稍后再试。`; },
   };
 }
 
@@ -1259,7 +1266,7 @@ async function send(text) {
   const bubble = botBubble();
   try {
     const r = await fetch("/api/chat/stream", {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({session_id: SESSION, message: text})});
+      body: JSON.stringify({session_id: SESSION, message: text, lang: I18N.lang})});
     if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
     const reader = r.body.getReader(), dec = new TextDecoder();
     let buf = "", finished = false;
@@ -1286,6 +1293,7 @@ $("#chat-form").onsubmit = e => { e.preventDefault(); send($("#input").value); }
 $("#input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($("#input").value); } });
 addMsg("bot", md("你好，我是你的会员运营助手，可以帮你看会员结构、找流失风险、出运营方案并算账。回答一般需要一两分钟，期间可以收起我继续看板，答好了按钮上会有提醒。"));
 
+I18N.init();
 showTab(location.hash.slice(1));
 loadDashboard().catch(() => { $("#tasks").innerHTML = `<div class="card empty" style="grid-column:1/-1">看板数据暂时没加载出来，请稍后刷新页面重试。</div>`; });
 </script>

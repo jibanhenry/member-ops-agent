@@ -197,12 +197,13 @@ def brief():
 
 
 @app.post("/api/brief/ai")
-def brief_ai():
+def brief_ai(lang: str = "zh"):
     """让大模型把简报改写成店长能直接读的版本；数字只能来自事实。"""
     b = store.get_weekly_brief()
     text, source = agent.complete(
         "你是会员运营智能体，每周一给门店店长写一份行动简报。要求：结论先行，最多 6 条，每条一句话；"
-        "所有数字只能来自给出的事实，不要编造；最后单列'需要你决定的事'。用中文，使用 Markdown 小标题和列表。",
+        "所有数字只能来自给出的事实，不要编造；最后单列'需要你决定的事'。"
+        + ("Write the whole brief in English, " if lang == "en" else "用中文，") + "使用 Markdown 小标题和列表。",
         "本周事实：" + json.dumps(b["facts"], ensure_ascii=False, default=str))
     return {"brief": text or b["brief"], "source": source if text else f"{source}，已显示模板简报"}
 
@@ -280,13 +281,18 @@ def model_report():
 class ChatRequest(BaseModel):
     session_id: str
     message: str
+    lang: str = "zh"
+
+    def text(self) -> str:
+        """界面切到英文时，让助手用英文回答。"""
+        return self.message + ("\n\n(Please answer in English.)" if self.lang == "en" else "")
 
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="消息不能为空")
-    return agent.chat(req.session_id, req.message)
+    return agent.chat(req.session_id, req.text())
 
 
 @app.post("/api/chat/stream")
@@ -294,6 +300,6 @@ def chat_stream(req: ChatRequest):
     """NDJSON 事件流：一行一个事件，前端边收边渲染。"""
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="消息不能为空")
-    events = (json.dumps(e, ensure_ascii=False, default=str) + "\n" for e in agent.chat_stream(req.session_id, req.message))
+    events = (json.dumps(e, ensure_ascii=False, default=str) + "\n" for e in agent.chat_stream(req.session_id, req.text()))
     return StreamingResponse(events, media_type="application/x-ndjson",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
