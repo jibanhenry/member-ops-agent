@@ -329,7 +329,7 @@ dialog.modal { border-radius: var(--radius); width: min(580px, calc(100vw - 32px
       <button role="tab" data-tab="budget" aria-selected="false">预算与活动</button>
       <button role="tab" data-tab="insight" aria-selected="false">价值洞察</button>
     </nav>
-    <div class="top-meta"><span id="snapshot"></span><span class="chip" id="dataset" hidden>演示数据</span>
+    <div class="top-meta"><span id="snapshot"></span><span class="chip" id="dataset" hidden>演示数据</span><span class="chip" id="demo-chip" hidden>公开演示</span>
       <div class="lang" role="group" aria-label="语言 / Language" data-noi18n><button data-lang="zh" aria-pressed="true">中文</button><button data-lang="en" aria-pressed="false">EN</button></div></div>
   </div>
 </header>
@@ -558,6 +558,12 @@ async function loadDashboard() {
   $("#snapshot").textContent = `数据截至 ${ds.snapshot_date}`;
   const dsEl = $("#dataset"); dsEl.hidden = false; dsEl.tabIndex = 0;
   bindTip(dsEl, `${esc(ds.name)}<br>${esc(ds.license)}`);
+  if (status.demo) {
+    const demoEl = $("#demo-chip"); demoEl.hidden = false; demoEl.tabIndex = 0;
+    const privacy = status.privacy === "local" ? "助手使用本地模型，数据不出本机"
+      : `助手使用${esc(status.backend)}，发送前会把卡号换成临时代号，并去掉年龄、性别等个人字段`;
+    bindTip(demoEl, `这是公开演示版：你在页面上的操作会在 ${status.demo_reset_hours} 小时内自动恢复<br>${privacy}`);
+  }
 
   renderTasks(); renderKpis(); renderButterfly(); renderBubbles(); renderTrust();
   renderPlan(); renderBudget(); renderCampaigns(camps.campaigns); renderInsight();

@@ -19,9 +19,10 @@ import pandas as pd
 from scipy import stats
 
 from . import economics
-from .data import PROCESSED_DIR
+from .settings import DEMO_MODE, STATE_DIR
 
-CAMPAIGNS_PATH = PROCESSED_DIR.parent / "campaigns.json"
+CAMPAIGNS_PATH = STATE_DIR / "campaigns.json"
+DEMO_MAX_CAMPAIGNS = 30
 Z_ALPHA, Z_BETA = 1.96, 0.84   # 双侧 95% 置信、80% 检验力
 
 
@@ -30,6 +31,9 @@ def load_all() -> list[dict]:
 
 
 def save_all(campaigns: list[dict]) -> None:
+    if DEMO_MODE:  # 公开演示时只保留最近的活动，防止被无限新建
+        campaigns = campaigns[-DEMO_MAX_CAMPAIGNS:]
+    CAMPAIGNS_PATH.parent.mkdir(parents=True, exist_ok=True)
     CAMPAIGNS_PATH.write_text(json.dumps(campaigns, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
 

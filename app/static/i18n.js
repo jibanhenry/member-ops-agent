@@ -14,6 +14,7 @@
     "预算与活动": "Budget & campaigns",
     "价值洞察": "Value insights",
     "演示数据": "Demo data",
+    "公开演示": "Public demo",
     "语言": "Language",
     "2018 年全国大学生数学建模竞赛 C 题·大型百货商场会员数据": "CUMCM 2018 Problem C · Department-store member data",
     "竞赛公开附件，仅用于非商业演示": "Public competition attachment; non-commercial demo use only",

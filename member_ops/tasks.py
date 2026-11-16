@@ -17,9 +17,9 @@ from datetime import datetime
 import pandas as pd
 
 from . import actions, economics
-from .data import PROCESSED_DIR
+from .settings import STATE_DIR
 
-TASKS_PATH = PROCESSED_DIR.parent / "tasks.json"
+TASKS_PATH = STATE_DIR / "tasks.json"
 TASK_TYPES = {"manual": "人工回访", "shortfall": "未达预期跟进"}
 STATUSES = ["待处理", "话术已确认", "已生成支付宝请求", "已联系"]
 RESULTS = ["已到柜", "有意向", "未接通", "明确拒绝", "其他"]
@@ -34,6 +34,7 @@ def load_state() -> dict:
 
 
 def save_state(state: dict) -> None:
+    TASKS_PATH.parent.mkdir(parents=True, exist_ok=True)
     TASKS_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
 
 

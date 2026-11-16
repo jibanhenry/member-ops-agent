@@ -14,17 +14,42 @@ uv run uvicorn app.server:app --port 8000   # 打开 http://localhost:8000
 ### 运营助手用哪个大模型（全部可免费运行）
 
 数据分析和建模（画像、生命周期、付费预测、流失预警）全部在本地完成，不需要任何大模型。
-只有右侧对话助手需要大模型，启动时按以下顺序自动选择，也可用 `LLM_BACKEND=ollama|claude|offline` 指定：
+只有对话助手、简报改写和话术起草需要大模型。密钥放在项目根目录的 `.env`（参考 `.env.example`，已被 git 忽略），
+启动时按以下顺序自动选择，也可用 `LLM_BACKEND=cloud|ollama|claude|offline` 指定：
 
-1. **本地模型（默认，免费）**：[Ollama](https://ollama.com) + `qwen3.5-9b-local`（即 `/Volumes/T8/SL/Chatweb/models/Qwen3.5-9B-Q4_K_M.gguf`）。
-   数据不出本机。M3/16GB 上每个问题约 40 秒~2 分钟。可用 `OLLAMA_MODEL`、`OLLAMA_URL`、`OLLAMA_NUM_CTX` 覆盖。
-2. **Claude**：设置 `ANTHROPIC_API_KEY` 时可选，分析质量更高，按量付费。
-3. **离线规则引擎**：没有任何模型时兜底，看板和基础问答仍可用。
+1. **云端开源模型（配了密钥时默认）**：OpenAI 兼容接口，按 `LLM_PROVIDERS` 的顺序依次尝试，出错或额度用完自动换下一个。
+   - 魔搭 API-Inference 的 `Qwen/Qwen3.8-Flash-Next`（`MODELSCOPE_TOKEN`）：每次调用扣 1 魔粒，实名并验证邮箱后每天约 250 魔粒，免费
+   - DeepSeek `deepseek-flash`（`DEEPSEEK_API_KEY`）：备用，按量付费
+   - 一个问题约 15~20 秒（含 1~3 次工具调用）
+2. **本地模型（私有部署，数据不出本机）**：[Ollama](https://ollama.com) + `qwen3.5-9b-local`，`LLM_BACKEND=ollama`。
+   M3/16GB 上每个问题约 40 秒~5 分钟。可用 `OLLAMA_MODEL`、`OLLAMA_URL`、`OLLAMA_NUM_CTX` 覆盖。
+3. **Claude**：设置 `ANTHROPIC_API_KEY` 时可选，按量付费。
+4. **离线规则引擎**：没有任何模型时兜底，看板和基础问答仍可用。
 
-本地小模型容易"心算"投入产出，Agent 会拦截没有经过 `simulate_campaign` 测算的 ROI 数字并要求重算。
+**隐私层**（`member_ops/privacy.py`）：数据发给任何云端模型之前，会员卡号换成会话内的临时代号（`M-0001`），
+去掉精确年龄、性别、入会日期等回答运营问题用不到的个人字段；模型回答回来再还原成真实卡号显示。
+`PRIVACY_MODE=strict` 时云端模型只能拿到汇总数据，拿不到单个会员明细。本地模型不经过这一层。
+
+模型容易"心算"投入产出，Agent 会拦截没有经过 `simulate_campaign` / `get_budget_plan` 测算的带数字的 ROI，每个问题最多纠正一次。
 
 对话走流式接口 `POST /api/chat/stream`（NDJSON 事件流：`tool_start` / `tool_end` / `text` / `reset` / `done`），
 界面上实时显示正在调用的工具和逐字生成的回答；`POST /api/chat` 保留为一次性返回的非流式接口。
+
+### 线上部署（魔搭 Docker 创空间，免费）
+
+公开演示放在魔搭 Docker 创空间（免费 2 核 16G，国内可访问，监听 7860 端口）。会员数据不进代码仓库，
+放在魔搭**私有数据集**里，容器启动时用只读令牌下载（`deploy/start.py`）。
+
+1. `uv run python deploy/package.py`：生成 `dist/studio/`（要上传到创空间的代码，含 `Dockerfile` 和创空间卡片）
+   和 `dist/data/`（要上传到私有数据集的处理后数据，约 16MB）
+2. 在魔搭新建**私有数据集**，上传 `dist/data/` 里的全部文件
+3. 新建创空间：SDK 选 Docker、资源选免费 CPU、设为公开；上传 `dist/studio/` 里的全部文件
+4. 创空间"设置 → 环境变量"：`MODELSCOPE_TOKEN`（只读令牌）、`DATA_DATASET`（如 `用户名/数据集名`）、可选 `DEEPSEEK_API_KEY`
+5. 点"上线"，在"查看日志"里确认看到 `Uvicorn running on http://0.0.0.0:7860`
+
+镜像默认 `DEMO_MODE=1`：访客新建的活动、修改的任务写到临时目录，每 `DEMO_RESET_HOURS`（默认 6）小时自动清空；
+不暴露接口文档页；每个访客每分钟最多提问 `CHAT_PER_MINUTE`（默认 6）次，全站每天最多 `LLM_DAILY_LIMIT`（默认 300）次
+调用大模型，超出后助手自动改用规则引擎。
 
 ## 演示数据
 
@@ -62,7 +87,10 @@ uv run uvicorn app.server:app --port 8000   # 打开 http://localhost:8000
 | `member_ops/actions.py` | 行动编排：个人补货节奏、按优惠敏感度选权益、成本上限、导购产能排队、大促档期，给每位会员排一个下一步动作 |
 | `member_ops/pipeline.py` | 端到端管线与回测报告 |
 | `member_ops/tools.py` | Agent 工具层（也供 Web API 复用） |
-| `member_ops/agent.py` | 工具调用循环（Ollama 本地模型 / Claude）+ 离线规则引擎 |
+| `member_ops/agent.py` | 工具调用循环：云端开源模型（魔搭 / DeepSeek，自动切换）、本地 Ollama、Claude，以及离线规则引擎 |
+| `member_ops/privacy.py` | 隐私层：发给云端模型前卡号换代号、去掉非必要个人字段，回答回来再还原 |
+| `member_ops/settings.py` / `limits.py` | 读取 `.env`、演示模式与状态目录；访客提问频率与每日模型额度保护 |
+| `deploy/` + `Dockerfile` | 魔搭 Docker 创空间部署：打包脚本、容器启动脚本、创空间卡片 |
 | `playbook/playbook.yaml` | **运营规则**：生命周期阈值、价值分层、补货节奏、权益分组（高价值不降价、羊毛党）、算账口径与成本、付费预期跟踪、触达频控与导购产能、大促日历、阶段×价值 -> 策略与预算 |
 | `playbook/methodology.md` | **运营方法论**：原样进入 Agent 系统提示词 |
 | `app/` | FastAPI 服务与单页看板 |

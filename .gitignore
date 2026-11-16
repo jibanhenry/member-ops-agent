@@ -8,3 +8,13 @@ data/processed/
 data/campaigns.json
 data/tasks.json
 data/outbox.json
+
+# 密钥与本地配置，永远不要提交
+.env
+.env.*
+AccessKey*.csv
+*accesskey*.csv
+
+# 部署打包输出
+dist/
+!.env.example

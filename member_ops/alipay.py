@@ -17,10 +17,11 @@ from datetime import datetime
 
 import pandas as pd
 
-from .data import PROCESSED_DIR
+from .settings import DEMO_MODE, STATE_DIR
 
 GATEWAY = "https://openapi.alipay.com/gateway.do"
-OUTBOX_PATH = PROCESSED_DIR.parent / "outbox.json"
+OUTBOX_PATH = STATE_DIR / "outbox.json"
+DEMO_MAX_OUTBOX = 200
 STATUS = "未对接商家，未发送"
 
 API_NAMES = {
@@ -121,6 +122,9 @@ def record(requests: list[dict], context: dict) -> list[dict]:
               "api": r["common_params"]["method"], "api_name": API_NAMES.get(r["common_params"]["method"], ""),
               "context": context, "request": r} for r in requests]
     box.extend(items)
+    if DEMO_MODE:
+        box = box[-DEMO_MAX_OUTBOX:]
+    OUTBOX_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTBOX_PATH.write_text(json.dumps(box, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     return items
 

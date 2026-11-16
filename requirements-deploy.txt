@@ -1,0 +1,12 @@
+# 线上演示（魔搭 Docker 创空间）运行网站所需的依赖。
+# 训练管线（scikit-learn、pyreadr、openpyxl 等）只在本地跑，不装进镜像。
+fastapi==0.153.0
+uvicorn==0.54.0
+pydantic==2.14.1
+numpy==2.5.4
+pandas==3.0.6
+pyarrow==26.0.0
+scipy==1.18.1
+pyyaml==6.0.3
+# 启动时从魔搭私有数据集下载会员数据
+modelscope==1.40.3

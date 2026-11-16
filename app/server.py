@@ -1,28 +1,58 @@
 """Web 服务：会员运营看板 + 对话式 Agent。
 
 运行：uv run uvicorn app.server:app --port 8000
+公开演示：DEMO_MODE=1（访客的修改写到临时目录、定时自动恢复；关闭接口文档页；限制提问频率）
 """
 
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from member_ops import tasks
+from member_ops import settings, tasks
 from member_ops.agent import MemberOpsAgent
+from member_ops.limits import RateLimiter
 from member_ops.tools import MemberStore, run_tool
 
 STATIC = Path(__file__).parent / "static"
 
 store = MemberStore()
 agent = MemberOpsAgent(store)
-app = FastAPI(title="会员运营 Agent")
+# 公开演示时不暴露自动生成的接口文档
+docs = {} if not settings.DEMO_MODE else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="会员运营 Agent", **docs)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+limiter = RateLimiter(settings.CHAT_PER_MINUTE)
+
+
+def reset_demo_state() -> None:
+    """演示模式：清空访客产生的活动、任务和支付宝请求，回到初始状态，然后预约下一次。"""
+    for f in settings.STATE_DIR.glob("*.json"):
+        f.unlink(missing_ok=True)
+    timer = threading.Timer(settings.DEMO_RESET_HOURS * 3600, reset_demo_state)
+    timer.daemon = True
+    timer.start()
+
+
+if settings.DEMO_MODE:
+    reset_demo_state()
+
+
+def _client_ip(request: Request) -> str:
+    # 部署在平台的反向代理后面，真实访客 IP 在 X-Forwarded-For 第一个
+    fwd = request.headers.get("x-forwarded-for", "")
+    return fwd.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+
+
+def _check_rate(request: Request) -> None:
+    if not limiter.allow(_client_ip(request)):
+        raise HTTPException(status_code=429, detail=f"提问太快了，每分钟最多 {settings.CHAT_PER_MINUTE} 次，请稍等一会儿再试")
 
 
 def _tool(name: str, **args):
@@ -39,7 +69,10 @@ def index():
 
 @app.get("/api/status")
 def status():
-    return {"llm": agent.backend is not None, "backend": agent.label, "dataset": store.report["dataset"]}
+    return {"llm": agent.backend is not None, "backend": agent.label, "dataset": store.report["dataset"],
+            "demo": settings.DEMO_MODE, "demo_reset_hours": settings.DEMO_RESET_HOURS,
+            "privacy": settings.PRIVACY_MODE if getattr(agent.backend, "cloud", False) else "local",
+            "llm_budget": agent.budget.status()}
 
 
 @app.get("/api/overview")
@@ -197,8 +230,9 @@ def brief():
 
 
 @app.post("/api/brief/ai")
-def brief_ai(lang: str = "zh"):
+def brief_ai(request: Request, lang: str = "zh"):
     """让大模型把简报改写成店长能直接读的版本；数字只能来自事实。"""
+    _check_rate(request)
     b = store.get_weekly_brief()
     text, source = agent.complete(
         "你是会员运营智能体，每周一给门店店长写一份行动简报。要求：结论先行，最多 6 条，每条一句话；"
@@ -219,11 +253,12 @@ class DraftRequest(BaseModel):
 
 
 @app.post("/api/tasks/{customer_id}/draft")
-def draft(customer_id: str, req: DraftRequest):
+def draft(customer_id: str, req: DraftRequest, request: Request):
     """起草话术：有大模型时按会员事实生成，否则用模板；返回合规检查结果，导购可修改后确认。"""
     ctx = _tool("get_draft_context", customer_id=customer_id, channel=req.channel)
     text, source = (None, "模板")
     if req.use_ai:
+        _check_rate(request)
         text, source = agent.complete(tasks.SYSTEM, tasks.ai_prompt(ctx["facts"], req.channel))
     if not text:
         source = "模板" if not req.use_ai else f"模板（{source}）"
@@ -289,17 +324,21 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/api/chat")
-def chat(req: ChatRequest):
+def chat(req: ChatRequest, request: Request):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="消息不能为空")
+    _check_rate(request)
     return agent.chat(req.session_id, req.text())
 
 
 @app.post("/api/chat/stream")
-def chat_stream(req: ChatRequest):
+def chat_stream(req: ChatRequest, request: Request):
     """NDJSON 事件流：一行一个事件，前端边收边渲染。"""
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="消息不能为空")
+    if len(req.message) > 2000:
+        raise HTTPException(status_code=400, detail="问题太长了，请控制在 2000 字以内")
+    _check_rate(request)
     events = (json.dumps(e, ensure_ascii=False, default=str) + "\n" for e in agent.chat_stream(req.session_id, req.text()))
     return StreamingResponse(events, media_type="application/x-ndjson",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

@@ -1,9 +1,11 @@
 """会员运营 Agent：大模型 + 工具调用。
 
-后端按优先级自动选择（也可用环境变量 LLM_BACKEND=ollama/claude/offline 指定）：
-1. ollama  —— 本地开源模型（默认 qwen3.5-9b-local），免费、数据不出本机
-2. claude  —— 配置了 ANTHROPIC_API_KEY 时可用
-3. offline —— 规则引擎兜底，保证没有任何模型时原型也能用
+后端按优先级自动选择（也可用环境变量 LLM_BACKEND=cloud/ollama/claude/offline 指定）：
+1. cloud   —— 云端开源模型，OpenAI 兼容接口：魔搭免费的 Qwen 为主，DeepSeek 备用，失败自动切换；
+             发出前经过隐私层（卡号换代号、去掉非必要个人字段）
+2. ollama  —— 本地开源模型（默认 qwen3.5-9b-local），免费、数据不出本机，适合私有部署
+3. claude  —— 配置了 ANTHROPIC_API_KEY 时可用
+4. offline —— 规则引擎兜底，保证没有任何模型时也能用
 """
 
 from __future__ import annotations
@@ -15,6 +17,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from . import settings
+from .limits import DailyBudget
+from .privacy import Redactor
 from .segments import PLAYBOOK_DIR
 from .tools import TOOL_LABELS, TOOL_SPECS, MemberStore, run_tool
 
@@ -23,6 +28,20 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5-9b-local")
 OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "16384"))
 MAX_TOOL_ROUNDS = 8
+CLOUD_TIMEOUT = int(os.environ.get("CLOUD_TIMEOUT", "120"))
+
+# 云端 OpenAI 兼容接口。模型名可用环境变量覆盖；没配密钥的提供方自动跳过
+PROVIDERS = {
+    "modelscope": {
+        "label": "魔搭 Qwen3.8-Flash-Next", "base_url": "https://api-inference.modelscope.cn/v1",
+        "key_env": "MODELSCOPE_TOKEN", "model_env": "MODELSCOPE_MODEL", "model": "Qwen/Qwen3.8-Flash-Next",
+        "extra": {"enable_thinking": False},  # 关闭思考：实测回答快约三成，工具调用不受影响
+    },
+    "deepseek": {
+        "label": "DeepSeek", "base_url": "https://api.deepseek.com",
+        "key_env": "DEEPSEEK_API_KEY", "model_env": "DEEPSEEK_MODEL", "model": "deepseek-flash", "extra": {},
+    },
+}
 
 
 def build_system_prompt(store: MemberStore) -> str:
@@ -60,15 +79,37 @@ def build_system_prompt(store: MemberStore) -> str:
 - 用中文回答，结论先行，适度使用小标题和列表，金额带单位。"""
 
 
-def _exec_tool(store: MemberStore, name: str, args: dict, trace: list) -> tuple[str, bool]:
-    """执行工具，返回 (结果文本, 是否出错)。参数错误回传给模型自行修正。"""
+def _exec_tool(store: MemberStore, name: str, args: dict, trace: list,
+               redactor: Redactor | None = None) -> tuple[str, bool]:
+    """执行工具，返回 (发给模型的结果文本, 是否出错)。参数错误回传给模型自行修正。
+    有 redactor 时：参数里的代号先还原成真实卡号再查询，结果去标识化后才交给云端模型。"""
+    args = dict(args or {})
     try:
-        output = run_tool(store, name, dict(args or {}))
+        if redactor:
+            redactor.check_tool(name)
+            args = redactor.unalias(args)
+        output = run_tool(store, name, args)
         trace.append({"tool": name, "input": args})
-        return json.dumps(output, ensure_ascii=False), False
+        if redactor:
+            output = redactor.redact(output)
+        return json.dumps(output, ensure_ascii=False, default=str), False
     except Exception as e:
         trace.append({"tool": name, "input": args, "error": str(e)})
         return f"Error: {e}", True
+
+
+# 只拦"带数字的投入产出结论"，比如"ROI 4.4""挽回 12 万"；只是提到这些词不拦
+MATH_CLAIM = re.compile(r"(ROI|投入产出|回报率)[^。\n|]{0,12}\d|挽回[^。\n|]{0,12}\d")
+
+
+def unverified_math(answer: str, trace: list) -> bool:
+    """模型常"心算"投入产出，这里拦截没有经过测算工具的 ROI 数字。"""
+    return bool(MATH_CLAIM.search(answer)) and not any(
+        t["tool"] in ("simulate_campaign", "get_budget_plan") and "error" not in t for t in trace)
+
+
+MATH_NUDGE = ("你的回答里有带数字的 ROI/挽回金额，但这些数字没有经过 simulate_campaign 或 get_budget_plan 测算。"
+              "如果这部分是用户问题需要的，就调用工具拿到真实结果再写；如果不需要，直接删掉这些数字。只回答用户问的问题。")
 
 
 def _tool_start(name: str, args: dict) -> dict:
@@ -137,8 +178,8 @@ class OllamaBackend:
         with urllib.request.urlopen(req, timeout=600) as r:
             return json.load(r)["message"]["content"].strip()
 
-    def stream(self, history: list):
-        trace = []
+    def stream(self, history: list, redactor: Redactor | None = None):
+        trace, nudged = [], False
         for _ in range(MAX_TOOL_ROUNDS):
             content, calls = "", []
             for part in self._stream_chat(history):
@@ -150,10 +191,10 @@ class OllamaBackend:
 
             if not calls:
                 answer = content.strip()
-                if self._unverified_math(answer, trace):
-                    yield {"type": "reset", "reason": "检测到未经测算的 ROI，正在调用测算工具重算…"}
-                    history.append({"role": "user", "content": "你的回答里有 ROI/挽回收入/成本测算，但没有调用 simulate_campaign。"
-                                    "请调用它拿到真实结果，再修正回答。"})
+                if not nudged and unverified_math(answer, trace):
+                    nudged = True
+                    yield {"type": "reset", "reason": "检测到未经测算的 ROI 数字，正在核对…"}
+                    history.append({"role": "user", "content": MATH_NUDGE})
                     continue
                 yield {"type": "done", "answer": answer, "tool_calls": trace, "mode": self.name}
                 return
@@ -169,11 +210,145 @@ class OllamaBackend:
                 history.append({"role": "tool", "tool_name": fn["name"], "content": text})
         yield {"type": "done", "answer": "分析步骤过多，已停止。请把问题拆小一些再问。", "tool_calls": trace, "mode": self.name}
 
+
+
+# ---------- 云端开源模型：OpenAI 兼容接口（魔搭、DeepSeek） ----------
+
+class CloudError(RuntimeError):
+    pass
+
+
+def cloud_providers() -> list[dict]:
+    """按 LLM_PROVIDERS 的顺序（默认 魔搭 -> DeepSeek）返回配置了密钥的提供方。"""
+    order = [k.strip() for k in os.environ.get("LLM_PROVIDERS", "modelscope,deepseek").split(",") if k.strip()]
+    return [{"key": k, **PROVIDERS[k]} for k in order if k in PROVIDERS and os.environ.get(PROVIDERS[k]["key_env"])]
+
+
+class CloudBackend:
+    name = "cloud"
+    cloud = True
+
+    def __init__(self, store: MemberStore, system: str, providers: list[dict]):
+        self.store = store
+        self.system = system + """
+- 会员卡号在你这里显示为 M-0001 这样的代号，查询时直接使用代号；回答里提到会员也用代号，界面会自动还原。
+- 问题太短或意思不明确（只有一两个字、打招呼、乱码）时不要调用工具，直接说明你能帮什么，并给 2~3 个可以问的例子。
+- 一个问题通常 1~3 次工具调用就够了，不要把所有工具挨个跑一遍；每次调用都会消耗额度。"""
+        self.providers = providers
+        self.tools = [{"type": "function", "function": {
+            "name": t["name"], "description": t["description"], "parameters": t["input_schema"]}} for t in TOOL_SPECS]
+
+    @property
+    def label(self) -> str:
+        names = [p["label"] for p in self.providers]
+        return names[0] + (f"（备用 {'、'.join(names[1:])}）" if len(names) > 1 else "")
+
     @staticmethod
-    def _unverified_math(answer: str, trace: list) -> bool:
-        """小模型常"心算"投入产出，这里拦截没有经过测算工具的 ROI 数字。"""
-        claims = re.search(r"ROI|投入产出|回报率|挽回(收入|消费)", answer)
-        return bool(claims) and not any(t["tool"] in ("simulate_campaign", "get_budget_plan") and "error" not in t for t in trace)
+    def _model(p: dict) -> str:
+        return os.environ.get(p["model_env"]) or p["model"]
+
+    @staticmethod
+    def _post(p: dict, body: dict):
+        req = urllib.request.Request(
+            p["base_url"].rstrip("/") + "/chat/completions", data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {os.environ[p['key_env']]}"})
+        try:
+            return urllib.request.urlopen(req, timeout=CLOUD_TIMEOUT)
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="ignore")[:200]
+            raise CloudError(f"HTTP {e.code} {detail}") from None
+
+    def _stream_chat(self, p: dict, messages: list):
+        """流式调用一次，逐段产出文字事件；结束时返回 (完整文字, 工具调用列表)。"""
+        body = {"model": self._model(p), "messages": [{"role": "system", "content": self.system}] + messages,
+                "tools": self.tools, "stream": True, "temperature": 0.3, **p["extra"]}
+        content, calls = "", {}
+        with self._post(p, body) as r:
+            for raw in r:
+                line = raw.decode("utf-8", errors="ignore").strip()
+                if not line.startswith("data:"):
+                    continue
+                data = line[5:].strip()
+                if data == "[DONE]":
+                    break
+                chunk = json.loads(data)
+                if chunk.get("error"):
+                    raise CloudError(str(chunk["error"])[:200])
+                for choice in chunk.get("choices") or []:
+                    delta = choice.get("delta") or {}
+                    if delta.get("content"):
+                        content += delta["content"]
+                        yield {"type": "text", "delta": delta["content"]}
+                    # 工具调用是分片流回来的，按 index 拼起来
+                    for tc in delta.get("tool_calls") or []:
+                        slot = calls.setdefault(tc.get("index", 0), {"id": "", "name": "", "arguments": ""})
+                        fn = tc.get("function") or {}
+                        slot["id"] = slot["id"] or tc.get("id") or ""
+                        slot["name"] = slot["name"] or fn.get("name") or ""
+                        slot["arguments"] += fn.get("arguments") or ""
+        return content, [calls[i] for i in sorted(calls)]
+
+    def _run(self, p: dict, history: list, redactor: Redactor | None):
+        trace, nudged = [], False
+        for _ in range(MAX_TOOL_ROUNDS):
+            content, calls = yield from self._stream_chat(p, history)
+            history.append({"role": "assistant", "content": content or None,
+                            "tool_calls": [{"id": c["id"] or f"call_{i}", "type": "function",
+                                            "function": {"name": c["name"], "arguments": c["arguments"] or "{}"}}
+                                           for i, c in enumerate(calls)] or None})
+            if not calls:
+                history[-1].pop("tool_calls")
+                answer = content.strip()
+                if not nudged and unverified_math(answer, trace):
+                    nudged = True
+                    yield {"type": "reset", "reason": "检测到未经测算的 ROI 数字，正在核对…"}
+                    history.append({"role": "user", "content": MATH_NUDGE})
+                    continue
+                yield {"type": "done", "answer": answer, "tool_calls": trace, "mode": p["key"]}
+                return
+            for i, c in enumerate(calls):
+                try:
+                    args = json.loads(c["arguments"] or "{}")
+                except json.JSONDecodeError:
+                    args = None
+                shown = redactor.unalias(args or {}) if redactor else (args or {})
+                yield _tool_start(c["name"], shown)
+                if args is None:
+                    text, is_error = "Error: 参数不是合法的 JSON，请重新调用", True
+                    trace.append({"tool": c["name"], "input": {}, "error": text})
+                else:
+                    text, is_error = _exec_tool(self.store, c["name"], args, trace, redactor)
+                yield _tool_end(c["name"], is_error, text)
+                history.append({"role": "tool", "tool_call_id": c["id"] or f"call_{i}", "content": text})
+        yield {"type": "done", "answer": "分析步骤过多，已停止。请把问题拆小一些再问。", "tool_calls": trace, "mode": p["key"]}
+
+    def stream(self, history: list, redactor: Redactor | None = None):
+        """依次尝试各提供方；某个出错（额度用完、超时、服务异常）就撤销这一轮，换下一个重来。"""
+        error = None
+        for i, p in enumerate(self.providers):
+            checkpoint = len(history)
+            try:
+                yield from self._run(p, history, redactor)
+                return
+            except (CloudError, urllib.error.URLError, OSError, ValueError, KeyError) as e:
+                del history[checkpoint:]
+                error = e
+                if i + 1 < len(self.providers):
+                    yield {"type": "reset", "reason": f"{p['label']} 暂时不可用，切换到 {self.providers[i + 1]['label']}…"}
+        raise CloudError(f"所有云端模型都不可用：{error}")
+
+    def complete(self, system: str, prompt: str) -> str:
+        """不带工具的一次性生成（起草话术、改写简报），同样按顺序兜底。"""
+        error = None
+        for p in self.providers:
+            body = {"model": self._model(p), "stream": False, "temperature": 0.5, **p["extra"],
+                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}
+            try:
+                with self._post(p, body) as r:
+                    return json.load(r)["choices"][0]["message"]["content"].strip()
+            except (CloudError, urllib.error.URLError, OSError, ValueError, KeyError) as e:
+                error = e
+        raise CloudError(f"所有云端模型都不可用：{error}")
 
 
 # ---------- 云端模型：Claude ----------
@@ -187,6 +362,7 @@ def claude_available() -> bool:
 class ClaudeBackend:
     name = "claude"
     label = f"Claude {CLAUDE_MODEL}"
+    cloud = True
 
     def __init__(self, store: MemberStore, system: str):
         import anthropic
@@ -200,7 +376,7 @@ class ClaudeBackend:
                                                messages=[{"role": "user", "content": prompt}])
         return "".join(b.text for b in response.content if b.type == "text").strip()
 
-    def stream(self, history: list):
+    def stream(self, history: list, redactor: Redactor | None = None):
         trace = []
         for _ in range(MAX_TOOL_ROUNDS):
             response = self.client.beta.messages.create(
@@ -230,8 +406,8 @@ class ClaudeBackend:
             results = []
             for block in response.content:
                 if block.type == "tool_use":
-                    yield _tool_start(block.name, block.input)
-                    text, is_error = _exec_tool(self.store, block.name, block.input, trace)
+                    yield _tool_start(block.name, redactor.unalias(block.input) if redactor else block.input)
+                    text, is_error = _exec_tool(self.store, block.name, block.input, trace, redactor)
                     yield _tool_end(block.name, is_error, text)
                     result = {"type": "tool_result", "tool_use_id": block.id, "content": text}
                     if is_error:
@@ -244,7 +420,11 @@ class ClaudeBackend:
 # ---------- Agent ----------
 
 def pick_backend(store: MemberStore, system: str):
-    choice = os.environ.get("LLM_BACKEND", "auto")
+    """auto：配了云端密钥就用云端（快），否则本地 Ollama，再否则 Claude。"""
+    choice = os.environ.get("LLM_BACKEND", "auto").strip().lower()
+    providers = cloud_providers()
+    if choice in ("auto", "cloud") and providers:
+        return CloudBackend(store, system, providers)
     if choice in ("auto", "ollama") and ollama_available():
         return OllamaBackend(store, system)
     if choice in ("auto", "claude") and claude_available():
@@ -258,6 +438,16 @@ class MemberOpsAgent:
         self.system = build_system_prompt(store)
         self.backend = pick_backend(store, self.system)
         self.sessions: dict[str, list] = {}
+        self.redactors: dict[str, Redactor] = {}
+        self.budget = DailyBudget(settings.LLM_DAILY_LIMIT)
+
+    def _redactor(self, session_id: str) -> Redactor | None:
+        """云端模型才需要隐私层；本地模型数据不出本机。"""
+        if not getattr(self.backend, "cloud", False):
+            return None
+        if session_id not in self.redactors:
+            self.redactors[session_id] = Redactor(self.store.members.index, strict=settings.PRIVACY_MODE == "strict")
+        return self.redactors[session_id]
 
     @property
     def label(self) -> str:
@@ -267,6 +457,8 @@ class MemberOpsAgent:
         """一次性生成，返回 (文本, 来源)；没有大模型或调用失败时返回 (None, 原因)。"""
         if self.backend is None:
             return None, "没有可用的大模型"
+        if not self.budget.take():
+            return None, "今天的智能额度已用完"
         try:
             return self.backend.complete(system, prompt), self.label
         except Exception as e:
@@ -274,16 +466,28 @@ class MemberOpsAgent:
 
     def chat_stream(self, session_id: str, user_message: str):
         """产出事件流：text（增量文字）/ tool_start / tool_end / reset（清空本轮已显示文字）/ done。"""
-        if self.backend is None:
-            result = offline_answer(self.store, user_message)
+        if self.backend is None or not self.budget.take():
+            note = None if self.backend is None else "今天的智能额度已用完，先给你快速查询的结果，明天自动恢复。"
+            result = offline_answer(self.store, user_message, note=note)
             yield {"type": "text", "delta": result["answer"]}
             yield {"type": "done", **result}
             return
+        redactor = self._redactor(session_id)
         history = self.sessions.setdefault(session_id, [])
+        if len(self.sessions) > 500:  # 公开演示时防止会话无限累积
+            for sid in list(self.sessions)[:100]:
+                self.sessions.pop(sid, None)
+                self.redactors.pop(sid, None)
         checkpoint = len(history)
-        history.append({"role": "user", "content": user_message})
+        history.append({"role": "user", "content": redactor.alias_text(user_message) if redactor else user_message})
         try:
-            yield from self.backend.stream(history)
+            for event in self.backend.stream(history, redactor):
+                if redactor:  # 代号还原成真实卡号再给界面
+                    if event["type"] == "text":
+                        event["delta"] = redactor.unalias(event["delta"])
+                    elif event["type"] == "done":
+                        event["answer"] = redactor.unalias(event["answer"])
+                yield event
         except Exception as e:  # 模型服务不可用时退回规则引擎，并撤销本轮半截对话
             del history[checkpoint:]
             result = offline_answer(self.store, user_message, note="助手暂时连不上，先给你快速查询的结果。")

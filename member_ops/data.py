@@ -26,9 +26,9 @@ from pathlib import Path
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent.parent
+from .settings import PROCESSED_DIR, ROOT
+
 RAW_DIR = ROOT / "data" / "raw"
-PROCESSED_DIR = ROOT / "data" / "processed"
 CJ_DIR = RAW_DIR / "completejourney"
 DEPT_DIR = RAW_DIR / "dept_store"
 
