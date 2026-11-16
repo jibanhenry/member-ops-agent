@@ -47,8 +47,22 @@ uv run uvicorn app.server:app --port 8000   # 打开 http://localhost:8000
 4. 创空间"设置 → 环境变量"：`MODELSCOPE_TOKEN`（只读令牌）、`DATA_DATASET`（如 `用户名/数据集名`）、可选 `DEEPSEEK_API_KEY`
 5. 点"上线"，在"查看日志"里确认看到 `Uvicorn running on http://0.0.0.0:7860`
 
+**修改后怎么发布**（上传需要 `.env` 里的 `MODELSCOPE_WRITE_TOKEN`，即魔搭写权限令牌）：
+
+| 改了什么 | 要做的 |
+|---|---|
+| 代码、页面、`methodology.md` | 本地跑通 → `uv run --with modelscope==1.40.3 python deploy/upload.py studio` → 创空间「空间管理 → 重新部署 → 确认部署」 |
+| `playbook.yaml`、模型、数据 | 先 `uv run python -m member_ops.pipeline`（生命周期、策略等是管线算好存进数据的）→ `upload.py all` → 重新部署 |
+| 环境变量（令牌、DeepSeek Key） | 创空间「部署设置 → 调整部署设置」修改后「确认并部署」；密文变量粘贴后确认框里出现圆点再保存，否则会存成空值 |
+
+部署后在「查看日志」里确认：`环境变量 MODELSCOPE_TOKEN：已配置（39 个字符）`、`Uvicorn running on http://0.0.0.0:7860`。
+
+**魔粒**：魔搭免费模型每调用一次扣 1 魔粒，一个问题约 2~4 魔粒；每天登录魔搭网站发放 250 魔粒（当天有效，北京时间零点重置），
+网页部署本身用免费 CPU，不扣魔粒。模型返回额度不足时，助手当天改用规则引擎并明确提示"今天的智能分析额度已经用完"，
+北京时间零点后自动恢复，不会每个问题都白等一次失败。
+
 镜像默认 `DEMO_MODE=1`：访客新建的活动、修改的任务写到临时目录，每 `DEMO_RESET_HOURS`（默认 6）小时自动清空；
-不暴露接口文档页；每个访客每分钟最多提问 `CHAT_PER_MINUTE`（默认 6）次，全站每天最多 `LLM_DAILY_LIMIT`（默认 300）次
+不暴露接口文档页；每个访客每分钟最多提问 `CHAT_PER_MINUTE`（默认 6）次，全站每天最多 `LLM_DAILY_LIMIT`（默认 80）次
 调用大模型，超出后助手自动改用规则引擎。
 
 ## 演示数据

@@ -48,4 +48,6 @@ PRIVACY_MODE = os.environ.get("PRIVACY_MODE", "standard").strip().lower()
 
 # 大模型调用额度保护（防止免费额度被刷光）
 CHAT_PER_MINUTE = int(os.environ.get("CHAT_PER_MINUTE", "6"))      # 每个访客每分钟最多提问次数
-LLM_DAILY_LIMIT = int(os.environ.get("LLM_DAILY_LIMIT", "300"))     # 全站每天最多调用大模型的请求数
+# 全站每天最多发起多少次大模型请求（提问、改写简报、起草话术各算一次）。一个问题约调用模型 2~4 次、
+# 每次扣 1 魔粒，80 次请求大约对应魔搭每天发放的 250 魔粒
+LLM_DAILY_LIMIT = int(os.environ.get("LLM_DAILY_LIMIT", "80"))

@@ -558,6 +558,9 @@ async function loadDashboard() {
   $("#snapshot").textContent = `数据截至 ${ds.snapshot_date}`;
   const dsEl = $("#dataset"); dsEl.hidden = false; dsEl.tabIndex = 0;
   bindTip(dsEl, `${esc(ds.name)}<br>${esc(ds.license)}`);
+  if (status.llm_budget && status.llm_budget.exhausted) {
+    addMsg("bot", md("今天的智能分析额度已经用完（每天北京时间零点自动恢复）。现在提问会先用快速查询回答，看板上的数据和名单都可以直接查看。"));
+  }
   if (status.demo) {
     const demoEl = $("#demo-chip"); demoEl.hidden = false; demoEl.tabIndex = 0;
     const privacy = status.privacy === "local" ? "助手使用本地模型，数据不出本机"

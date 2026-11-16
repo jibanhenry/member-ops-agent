@@ -15,6 +15,8 @@
     "价值洞察": "Value insights",
     "演示数据": "Demo data",
     "公开演示": "Public demo",
+    "今天的智能分析额度已经用完（每天北京时间零点自动恢复）。现在提问会先用快速查询回答，看板上的数据和名单都可以直接查看。":
+      "Today's AI analysis quota is used up (it resets at midnight Beijing time). Questions will be answered with quick lookups for now; all dashboard data and lists are still available.",
     "语言": "Language",
     "2018 年全国大学生数学建模竞赛 C 题·大型百货商场会员数据": "CUMCM 2018 Problem C · Department-store member data",
     "竞赛公开附件，仅用于非商业演示": "Public competition attachment; non-commercial demo use only",

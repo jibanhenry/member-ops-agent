@@ -5,7 +5,14 @@ from __future__ import annotations
 import threading
 import time
 from collections import defaultdict, deque
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
+
+BEIJING = timezone(timedelta(hours=8))
+
+
+def beijing_today() -> date:
+    """魔搭每天北京时间零点发放魔粒；服务器时钟可能是 UTC，统一按北京时间算"今天"。"""
+    return datetime.now(BEIJING).date()
 
 
 class RateLimiter:
@@ -37,20 +44,31 @@ class DailyBudget:
 
     def __init__(self, limit: int):
         self.limit = limit
-        self.day = date.today()
+        self.day = beijing_today()
         self.used = 0
+        self.exhausted_day: date | None = None  # 模型服务方的额度（如魔搭魔粒）当天已用完
         self.lock = threading.Lock()
 
+    def _roll(self) -> None:
+        if beijing_today() != self.day:
+            self.day, self.used = beijing_today(), 0
+
     def take(self) -> bool:
-        if self.limit <= 0:
-            return True
         with self.lock:
-            if date.today() != self.day:
-                self.day, self.used = date.today(), 0
-            if self.used >= self.limit:
+            self._roll()
+            if self.exhausted_day == self.day or (self.limit > 0 and self.used >= self.limit):
                 return False
             self.used += 1
             return True
 
+    def mark_exhausted(self) -> None:
+        """模型服务方返回额度不足：当天不再调用，北京时间零点后自动恢复。"""
+        with self.lock:
+            self._roll()
+            self.exhausted_day = self.day
+
     def status(self) -> dict:
-        return {"limit": self.limit, "used": self.used, "day": str(self.day)}
+        with self.lock:
+            self._roll()
+            return {"limit": self.limit, "used": self.used, "day": str(self.day),
+                    "exhausted": self.exhausted_day == self.day or (self.limit > 0 and self.used >= self.limit)}

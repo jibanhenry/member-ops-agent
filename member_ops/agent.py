@@ -216,7 +216,14 @@ class OllamaBackend:
 # ---------- 云端开源模型：OpenAI 兼容接口（魔搭、DeepSeek） ----------
 
 class CloudError(RuntimeError):
-    pass
+    def __init__(self, message: str, quota: bool = False):
+        super().__init__(message)
+        self.quota = quota  # 额度不足（魔粒用完、余额不足、超出调用上限）
+
+
+QUOTA_HINT = re.compile(r"魔粒|额度|余额|quota|insufficient|balance|exceed|rate.?limit", re.I)
+QUOTA_NOTE = ("今天的智能分析额度已经用完（每天北京时间零点自动恢复），下面先用快速查询给你结果。"
+              "看板上的数据和名单都是现成的，可以直接查看。")
 
 
 def cloud_providers() -> list[dict]:
@@ -257,7 +264,7 @@ class CloudBackend:
             return urllib.request.urlopen(req, timeout=CLOUD_TIMEOUT)
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", errors="ignore")[:200]
-            raise CloudError(f"HTTP {e.code} {detail}") from None
+            raise CloudError(f"HTTP {e.code} {detail}", quota=e.code in (402, 429) or bool(QUOTA_HINT.search(detail))) from None
 
     def _stream_chat(self, p: dict, messages: list):
         """流式调用一次，逐段产出文字事件；结束时返回 (完整文字, 工具调用列表)。"""
@@ -274,7 +281,8 @@ class CloudBackend:
                     break
                 chunk = json.loads(data)
                 if chunk.get("error"):
-                    raise CloudError(str(chunk["error"])[:200])
+                    detail = str(chunk["error"])[:200]
+                    raise CloudError(detail, quota=bool(QUOTA_HINT.search(detail)))
                 for choice in chunk.get("choices") or []:
                     delta = choice.get("delta") or {}
                     if delta.get("content"):
@@ -325,7 +333,7 @@ class CloudBackend:
 
     def stream(self, history: list, redactor: Redactor | None = None):
         """依次尝试各提供方；某个出错（额度用完、超时、服务异常）就撤销这一轮，换下一个重来。"""
-        error = None
+        errors = []
         for i, p in enumerate(self.providers):
             checkpoint = len(history)
             try:
@@ -333,14 +341,15 @@ class CloudBackend:
                 return
             except (CloudError, urllib.error.URLError, OSError, ValueError, KeyError) as e:
                 del history[checkpoint:]
-                error = e
+                errors.append(e)
                 if i + 1 < len(self.providers):
-                    yield {"type": "reset", "reason": f"{p['label']} 暂时不可用，切换到 {self.providers[i + 1]['label']}…"}
-        raise CloudError(f"所有云端模型都不可用：{error}")
+                    why = "今天的额度已用完" if getattr(e, "quota", False) else "暂时不可用"
+                    yield {"type": "reset", "reason": f"{p['label']} {why}，切换到 {self.providers[i + 1]['label']}…"}
+        raise CloudError(f"所有云端模型都不可用：{errors[-1]}", quota=all(getattr(e, "quota", False) for e in errors))
 
     def complete(self, system: str, prompt: str) -> str:
         """不带工具的一次性生成（起草话术、改写简报），同样按顺序兜底。"""
-        error = None
+        errors = []
         for p in self.providers:
             body = {"model": self._model(p), "stream": False, "temperature": 0.5, **p["extra"],
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}
@@ -348,8 +357,8 @@ class CloudBackend:
                 with self._post(p, body) as r:
                     return json.load(r)["choices"][0]["message"]["content"].strip()
             except (CloudError, urllib.error.URLError, OSError, ValueError, KeyError) as e:
-                error = e
-        raise CloudError(f"所有云端模型都不可用：{error}")
+                errors.append(e)
+        raise CloudError(f"所有云端模型都不可用：{errors[-1]}", quota=all(getattr(e, "quota", False) for e in errors))
 
 
 # ---------- 云端模型：Claude ----------
@@ -459,16 +468,19 @@ class MemberOpsAgent:
         if self.backend is None:
             return None, "没有可用的大模型"
         if not self.budget.take():
-            return None, "今天的智能额度已用完"
+            return None, "今天的智能额度已用完，北京时间零点恢复"
         try:
             return self.backend.complete(system, prompt), self.label
         except Exception as e:
+            if getattr(e, "quota", False):
+                self.budget.mark_exhausted()
+                return None, "今天的智能额度已用完，北京时间零点恢复"
             return None, f"大模型调用失败（{type(e).__name__}）"
 
     def chat_stream(self, session_id: str, user_message: str):
         """产出事件流：text（增量文字）/ tool_start / tool_end / reset（清空本轮已显示文字）/ done。"""
         if self.backend is None or not self.budget.take():
-            note = None if self.backend is None else "今天的智能额度已用完，先给你快速查询的结果，明天自动恢复。"
+            note = None if self.backend is None else QUOTA_NOTE
             result = offline_answer(self.store, user_message, note=note)
             yield {"type": "text", "delta": result["answer"]}
             yield {"type": "done", **result}
@@ -501,8 +513,13 @@ class MemberOpsAgent:
                 yield event
         except Exception as e:  # 模型服务不可用时退回规则引擎，并撤销本轮半截对话
             del history[checkpoint:]
-            result = offline_answer(self.store, user_message, note="助手暂时连不上，先给你快速查询的结果。")
-            yield {"type": "reset", "reason": "大模型调用失败"}
+            if getattr(e, "quota", False):  # 额度用完：当天不再重试，免得每个问题都白等一次失败
+                self.budget.mark_exhausted()
+                note, reason = QUOTA_NOTE, "今天的智能分析额度已用完"
+            else:
+                note, reason = "助手暂时连不上，先给你快速查询的结果，稍后再问可以恢复智能分析。", "大模型调用失败"
+            result = offline_answer(self.store, user_message, note=note)
+            yield {"type": "reset", "reason": reason}
             yield {"type": "text", "delta": result["answer"]}
             yield {"type": "done", **result}
 
