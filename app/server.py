@@ -44,14 +44,27 @@ if settings.DEMO_MODE:
     reset_demo_state()
 
 
-def _client_ip(request: Request) -> str:
-    # 部署在平台的反向代理后面，真实访客 IP 在 X-Forwarded-For 第一个
-    fwd = request.headers.get("x-forwarded-for", "")
-    return fwd.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+FORWARD_HEADERS = ("x-forwarded-for", "x-real-ip", "x-client-ip", "true-client-ip", "ali-cdn-real-ip")
+_logged_headers = False
 
 
-def _check_rate(request: Request) -> None:
-    if not limiter.allow(_client_ip(request)):
+def _visitor_key(request: Request, session_id: str | None = None) -> str:
+    """限流按访客区分。部署在平台反向代理后面时，真实访客 IP 在转发头里；
+    平台没有传转发头时，退回到"代理 IP + 浏览器会话"，至少不让所有访客共用一个额度。"""
+    global _logged_headers
+    if not _logged_headers:  # 只记录有哪些转发头（不记录值），方便在线上日志里确认
+        print("请求里的转发头：", [h for h in FORWARD_HEADERS if h in request.headers] or "无", flush=True)
+        _logged_headers = True
+    for h in FORWARD_HEADERS:
+        value = request.headers.get(h, "").split(",")[0].strip()
+        if value:
+            return value
+    host = request.client.host if request.client else "unknown"
+    return f"{host}|{session_id}" if session_id else host
+
+
+def _check_rate(request: Request, session_id: str | None = None) -> None:
+    if not limiter.allow(_visitor_key(request, session_id)):
         raise HTTPException(status_code=429, detail=f"提问太快了，每分钟最多 {settings.CHAT_PER_MINUTE} 次，请稍等一会儿再试")
 
 
@@ -327,7 +340,7 @@ class ChatRequest(BaseModel):
 def chat(req: ChatRequest, request: Request):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="消息不能为空")
-    _check_rate(request)
+    _check_rate(request, req.session_id)
     return agent.chat(req.session_id, req.text())
 
 
@@ -338,7 +351,7 @@ def chat_stream(req: ChatRequest, request: Request):
         raise HTTPException(status_code=400, detail="消息不能为空")
     if len(req.message) > 2000:
         raise HTTPException(status_code=400, detail="问题太长了，请控制在 2000 字以内")
-    _check_rate(request)
+    _check_rate(request, req.session_id)
     events = (json.dumps(e, ensure_ascii=False, default=str) + "\n" for e in agent.chat_stream(req.session_id, req.text()))
     return StreamingResponse(events, media_type="application/x-ndjson",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

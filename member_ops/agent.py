@@ -28,6 +28,7 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5-9b-local")
 OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "16384"))
 MAX_TOOL_ROUNDS = 8
+PARTIAL_ALIAS = re.compile(r"M(-\d{0,3})?$")  # 流式文字末尾可能只到 "M"、"M-"、"M-00"
 CLOUD_TIMEOUT = int(os.environ.get("CLOUD_TIMEOUT", "120"))
 
 # 云端 OpenAI 兼容接口。模型名可用环境变量覆盖；没配密钥的提供方自动跳过
@@ -481,12 +482,22 @@ class MemberOpsAgent:
         checkpoint = len(history)
         history.append({"role": "user", "content": redactor.alias_text(user_message) if redactor else user_message})
         try:
+            pending = ""  # 末尾疑似被截断的代号，等下一段文字拼完整再还原
             for event in self.backend.stream(history, redactor):
                 if redactor:  # 代号还原成真实卡号再给界面
                     if event["type"] == "text":
-                        event["delta"] = redactor.unalias(event["delta"])
-                    elif event["type"] == "done":
-                        event["answer"] = redactor.unalias(event["answer"])
+                        text = pending + event["delta"]
+                        cut = PARTIAL_ALIAS.search(text)
+                        pending, text = (text[cut.start():], text[:cut.start()]) if cut else ("", text)
+                        if not text:
+                            continue
+                        event["delta"] = redactor.unalias(text)
+                    else:
+                        if pending:
+                            yield {"type": "text", "delta": redactor.unalias(pending)}
+                            pending = ""
+                        if event["type"] == "done":
+                            event["answer"] = redactor.unalias(event["answer"])
                 yield event
         except Exception as e:  # 模型服务不可用时退回规则引擎，并撤销本轮半截对话
             del history[checkpoint:]

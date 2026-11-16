@@ -884,7 +884,7 @@ async function loadBrief() {
 }
 $("#brief-toggle").onclick = () => { const f = $("#brief").classList.toggle("fold"); $("#brief-toggle").textContent = f ? "展开全文" : "收起"; };
 $("#brief-ai").onclick = async () => {
-  const btn = $("#brief-ai"); btn.disabled = true; $("#brief-src").textContent = "智能体正在重写简报，可能需要一两分钟…";
+  const btn = $("#brief-ai"); btn.disabled = true; $("#brief-src").textContent = "智能体正在重写简报，通常需要十几秒…";
   try { const b = await api(`/api/brief/ai?lang=${I18N.lang}`, {method: "POST"});
     $("#brief").setAttribute("data-noi18n", ""); $("#brief").innerHTML = md(b.brief);  // 大模型写的原文不再二次翻译
     $("#brief").classList.remove("fold"); $("#brief-toggle").textContent = "收起"; $("#brief-src").textContent = `由 ${b.source} 重写，数字来自看板的计算结果`; }
@@ -940,7 +940,7 @@ async function openTask(id) {
   dlg.showModal();
   const showChecks = checks => { $("#td-checks").innerHTML = checks.map(c => `<li class="${c.ok ? "" : "bad"}">${esc(c.rule)}${c.detail && !c.ok ? `：${esc(c.detail)}` : ""}</li>`).join(""); };
   const draft = async useAi => {
-    $("#td-src").textContent = useAi ? "智能体起草中，可能需要一两分钟…" : "";
+    $("#td-src").textContent = useAi ? "智能体起草中，通常需要十几秒…" : "";
     try { const d = await postJSON(`/api/tasks/${id}/draft`, {channel: $("#td-channel").value, use_ai: useAi});
       $("#td-text").value = d.text; $("#td-src").textContent = `来源：${d.source}`; showChecks(d.checks); return d; }
     catch (e) { $("#td-src").textContent = e.message; } };
@@ -1297,7 +1297,7 @@ async function send(text) {
 }
 $("#chat-form").onsubmit = e => { e.preventDefault(); send($("#input").value); };
 $("#input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($("#input").value); } });
-addMsg("bot", md("你好，我是你的会员运营助手，可以帮你看会员结构、找流失风险、出运营方案并算账。回答一般需要一两分钟，期间可以收起我继续看板，答好了按钮上会有提醒。"));
+addMsg("bot", md("你好，我是你的会员运营助手，可以帮你看会员结构、找流失风险、出运营方案并算账。回答一般需要十几秒（私有部署用本地模型会慢一些），期间可以收起我继续看板，答好了按钮上会有提醒。"));
 
 I18N.init();
 showTab(location.hash.slice(1));

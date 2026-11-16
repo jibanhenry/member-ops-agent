@@ -25,7 +25,7 @@
     "让智能体重写": "Rewrite with AI",
     "展开全文": "Expand",
     "收起": "Collapse",
-    "智能体正在重写简报，可能需要一两分钟…": "The agent is rewriting the brief; this may take a minute or two…",
+    "智能体正在重写简报，通常需要十几秒…": "The agent is rewriting the brief; this usually takes 10–20 seconds…",
     "今天先做这几件事": "Start with these today",
     "按风险金额和时效排序": "Sorted by value at risk and urgency",
     "谁在贡献收入": "Who drives revenue",
@@ -153,7 +153,7 @@
     "备注（选填）": "Note (optional)",
     "备注": "Note",
     "记录结果": "Save outcome",
-    "智能体起草中，可能需要一两分钟…": "Drafting with AI; this may take a minute or two…",
+    "智能体起草中，通常需要十几秒…": "Drafting with AI; this usually takes 10–20 seconds…",
     "禁止价格减免": "No price cuts allowed",
     "单人成本上限": "Per-member cost cap",
     "智能体起草时只用到以上事实，拿不到会员的生日、卡号和消费明细。": "The AI draft uses only the facts above; it has no access to the member's birthday, card number or purchase details.",
@@ -449,8 +449,8 @@
     "未能": "Failed: ",
     "正在重新核对数字…": "Re-checking the numbers…",
     "连接中断": "connection lost",
-    "你好，我是你的会员运营助手，可以帮你看会员结构、找流失风险、出运营方案并算账。回答一般需要一两分钟，期间可以收起我继续看板，答好了按钮上会有提醒。":
-      "Hi, I'm your member ops assistant. I can walk you through member structure, find churn risk, and draft ops plans with the numbers worked out. An answer usually takes a minute or two; feel free to collapse me and keep using the dashboard, and the button will show a dot when I'm done.",
+    "你好，我是你的会员运营助手，可以帮你看会员结构、找流失风险、出运营方案并算账。回答一般需要十几秒（私有部署用本地模型会慢一些），期间可以收起我继续看板，答好了按钮上会有提醒。":
+      "Hi, I'm your member ops assistant. I can walk you through member structure, find churn risk, and draft ops plans with the numbers worked out. An answer usually takes 10–20 seconds (slower with a local model in private deployments); feel free to collapse me and keep using the dashboard, and the button will show a dot when I'm done.",
     "给我本周简报": "Give me this week's brief",
     "会员整体情况怎么样？": "How are our members doing overall?",
     "哪些高价值会员有流失风险？": "Which high-value members are at risk of churning?",

@@ -26,6 +26,13 @@ def data_dir() -> Path:
 
 def ensure_data(target: Path) -> None:
     dataset, token = os.environ.get("DATA_DATASET"), os.environ.get("MODELSCOPE_TOKEN")
+    # 只打印变量是否存在、长度，绝不打印值，方便在创空间日志里排查环境变量没配上的情况
+    for name in ("DATA_DATASET", "MODELSCOPE_TOKEN", "DEEPSEEK_API_KEY"):
+        value = os.environ.get(name)
+        state = "未配置" if value is None else ("值为空" if not value.strip() else f"已配置（{len(value.strip())} 个字符）")
+        print(f"环境变量 {name}：{state}", flush=True)
+    secretish = sorted(k for k in os.environ if any(s in k.upper() for s in ("TOKEN", "KEY", "SECRET")))
+    print(f"名称含 TOKEN/KEY/SECRET 的环境变量：{secretish or '无'}", flush=True)
     if dataset and token:
         from modelscope.hub.snapshot_download import dataset_snapshot_download
 
